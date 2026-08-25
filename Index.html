@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Toolbox Pro – 90+ Free Online Developer & Daily Utilities</title>
+  <meta name="description" content="Free collection of 90+ browser-based tools: image processing, cryptographic hashing, text manipulation, math calculators, and unit converters. Fast, private, and offline-ready." />
+  
+  <!-- Preconnect & External CDNs -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <!-- Google AdSense Tag -->
+  <!-- <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" crossorigin="anonymous"></script> -->
+
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+
+  <!-- Header -->
+  <header class="site-header">
+    <button class="hamburger" id="hamburgerBtn" aria-label="Toggle Tool Navigation">☰</button>
+    <a class="brand" href="#/qrcode">
+      <div class="brand-mark">🧰</div>
+      <div class="brand-text">
+        <strong>Toolbox Pro</strong>
+        <span>90+ Online Tools</span>
+      </div>
+    </a>
+    <div class="header-search">
+      <span>🔍</span>
+      <input type="text" id="toolSearch" placeholder="Search 90+ tools (e.g. SHA-256, regex, sql, base64)..." />
+    </div>
+    <nav class="header-nav">
+      <button data-modal="about">About</button>
+      <button data-modal="privacy">Privacy</button>
+      <button data-modal="terms">Terms</button>
+      <button data-modal="contact">Contact</button>
+    </nav>
+  </header>
+
+  <!-- Leaderboard Ad Slot -->
+  <div class="ad-slot ad-leaderboard">
+    <span class="ad-label">Advertisement</span>
+    <div class="ad-placeholder">
+      <!-- PASTE GOOGLE ADSENSE CODE HERE -->
+      <span>Leaderboard Ad Slot</span>
+    </div>
+  </div>
+
+  <!-- Application Shell -->
+  <div class="app-shell">
+    <nav class="sidebar" id="sidebar">
+      <div id="sidebarContent"></div>
+    </nav>
+
+    <main class="main" id="mainContent">
+      <div class="tool-header">
+        <h1 id="toolTitle">Loading Tool…</h1>
+        <p id="toolDesc"></p>
+      </div>
+
+      <div class="tool-content" id="toolContainer"></div>
+
+      <!-- In-Content Ad Slot -->
+      <div class="ad-slot ad-incontent">
+        <span class="ad-label">Advertisement</span>
+        <div class="ad-placeholder">
+          <!-- PASTE IN-CONTENT ADSENSE CODE HERE -->
+          <span>In-Content Responsive Ad Unit</span>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Bottom Ad Slot -->
+  <div class="ad-slot ad-footer">
+    <span class="ad-label">Advertisement</span>
+    <div class="ad-placeholder">
+      <!-- PASTE FOOTER ADSENSE CODE HERE -->
+      <span>Bottom Banner Ad Unit</span>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="footer-grid">
+      <div class="footer-col">
+        <div class="brand" style="margin-bottom: 12px;">
+          <div class="brand-mark" style="width:28px;height:28px;font-size:0.9rem;">🧰</div>
+          <strong>Toolbox Pro</strong>
+        </div>
+        <p>A fast, private suite of browser-based utilities. All tools execute locally on your device without server communication.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Navigation</h4>
+        <ul id="footerCategoryList"></ul>
+      </div>
+      <div class="footer-col">
+        <h4>Company & Legal</h4>
+        <ul>
+          <li><button data-modal="about">About Us</button></li>
+          <li><button data-modal="privacy">Privacy Policy</button></li>
+          <li><button data-modal="terms">Terms of Service</button></li>
+          <li><button data-modal="cookies">Cookie Settings</button></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Support & Compliance</h4>
+        <ul>
+          <li><button data-modal="contact">Contact Support</button></li>
+          <li><button data-modal="disclaimer">Usage Disclaimer</button></li>
+          <li><button data-modal="gdpr">GDPR / CCPA Notice</button></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>&copy; <span id="yearNow"></span> Toolbox Pro. All utilities client-side.</span>
+      <span>No data leaves your browser.</span>
+    </div>
+  </footer>
+
+  <!-- Cookie Consent Banner -->
+  <div class="cookie-banner" id="cookieBanner">
+    <p>We use cookies to analyze web traffic and serve ads in accordance with Google publisher requirements. See our <button data-modal="cookies" class="link-btn">Cookie Policy</button>.</p>
+    <div class="cookie-actions">
+      <button class="btn" id="cookieAcceptBtn">Accept All</button>
+      <button class="btn btn-secondary" id="cookieDeclineBtn">Necessary Only</button>
+    </div>
+  </div>
+
+  <!-- Modal Overlay -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal-box" id="modalBox"></div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="policies.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
