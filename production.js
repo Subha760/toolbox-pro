@@ -99,8 +99,6 @@
     window.__toolideaWrapped = true;
     window.TOOLIDEA_TOOLS = registry;
     try { window.TOOLIDEA_CATEGORIES = CATEGORIES; } catch (_) {}
-
-    /* Fix the original passport renderer before wrapping it with the runtime guard. */
     registry.idphoto = makeFixedIdPhotoTool();
 
     Object.keys(registry).forEach(function (key) {
@@ -113,6 +111,9 @@
       };
       tool.__toolideaWrapped = true;
     });
+
+    /* app.js renders the current route before this production layer runs. Re-render the ID photo route so the fix is visible immediately. */
+    if (location.hash.replace('#/','').trim() === 'idphoto' && typeof handleRoute === 'function') handleRoute();
   }
 
   function ensureAdSlots() {
