@@ -12,19 +12,18 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Verify required files and references
+      - name: Verify production files
         shell: bash
         run: |
           set -euo pipefail
-          for f in Index.html index.html app.js policies.js Style.css upgrade.css upgrade.js clean-nav.js clean-nav.css toolinger-site.js photo-menu-fix.js ads.txt robots.txt SECURITY.md production-test.html toolinger-logo.webp; do test -f "$f"; done
-          grep -q 'href="Style.css"' Index.html
-          grep -q 'href="upgrade.css"' Index.html
-          grep -q 'href="clean-nav.css"' Index.html
-          grep -q 'src="app.js"' Index.html
-          grep -q 'src="upgrade.js"' Index.html
-          grep -q 'src="toolinger-site.js"' Index.html
-          grep -q 'id="hamburgerBtn"' Index.html
-          ! grep -Eq 'final-ui\.js|site-hardening\.js|nav-hotfix\.js|nav-final\.js|landing\.js|consent\.js' Index.html
+          for f in index.html app.js policies.js styles.css Style.css site.js ads.txt robots.txt SECURITY.md; do test -f "$f"; done
+          grep -q 'id="hamburgerBtn"' index.html
+          grep -q 'id="sidebar"' index.html
+          grep -q 'id="toolContainer"' index.html
+          grep -q 'src="app.js?v=' index.html
+          grep -q 'src="site.js?v=' index.html
+          grep -q 'href="styles.css?v=' index.html
+          echo 'Required production files and references are present.'
       - name: Check for placeholder ad credentials
         shell: bash
         run: |
@@ -32,14 +31,15 @@ jobs:
           if grep -RIn --exclude-dir=.git --exclude='production-check.yml' 'pub-XXXXXXXXXXXXXXXX\|ca-pub-XXXXXXXXXXXXXXXX' .; then
             echo 'ERROR: placeholder advertising credentials are present.'
             exit 1
-          else
-            echo 'No advertising credential placeholders found.'
           fi
+          echo 'No advertising credential placeholders found.'
       - name: Check JavaScript syntax
         shell: bash
         run: |
           set -euo pipefail
-          for f in app.js production.js enhancements.js motion.js photo-menu-fix.js upgrade.js toolinger-site.js clean-nav.js; do node --check "$f"; done
+          node --check app.js
+          node --check site.js
+          node --check policies.js
       - name: Check HTML structure
         shell: bash
         run: |
@@ -47,13 +47,13 @@ jobs:
           python3 - <<'PY'
           from html.parser import HTMLParser
           from pathlib import Path
-          for name in ('Index.html','index.html','production-test.html'):
-              class Parser(HTMLParser): pass
-              Parser().feed(Path(name).read_text(encoding='utf-8'))
-              print(name, 'parsed successfully')
-          html=Path('Index.html').read_text(encoding='utf-8')
-          assert html.count('id="hamburgerBtn"') == 1, 'hamburger button must be unique'
-          assert html.count('id="sidebar"') == 1, 'sidebar must be unique'
-          assert 'toolinger-site.js' in html, 'final site shell must be loaded'
-          print('navigation IDs and final shell are present')
+          class Parser(HTMLParser):
+              pass
+          html=Path('index.html').read_text(encoding='utf-8')
+          Parser().feed(html)
+          for element in ('hamburgerBtn','sidebar','sidebarContent','toolTitle','toolDesc','toolContainer','cookieBanner','modalOverlay'):
+              assert f'id="{element}"' in html, f'missing {element}'
+          assert html.count('id="hamburgerBtn"') == 1
+          assert html.count('id="sidebar"') == 1
+          print('index.html parsed and required application IDs are unique.')
           PY
