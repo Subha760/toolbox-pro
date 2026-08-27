@@ -3,43 +3,41 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>Toolbox Pro – 90+ Free Online Developer & Daily Utilities</title>
-  <meta name="description" content="Free collection of 90+ browser-based tools: image processing, cryptographic hashing, text manipulation, math calculators, and unit converters. Fast, private, and offline-ready." />
-  
-  <!-- Preconnect & External CDNs -->
+  <meta name="theme-color" content="#7c5cff" />
+  <meta name="description" content="Toolidea — 90+ free browser-based tools for images, text, developers, math, conversions, finance, dates and productivity. Fast and privacy-focused." />
+  <title>Toolidea – 90+ Free Online Tools</title>
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-  
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
-  <!-- Google AdSense Tag -->
-  <!-- <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" crossorigin="anonymous"></script> -->
+  <!-- Monetag integration point: add the official site/ad-channel tag here after your Monetag zone is created. -->
+  <script>window.TOOLIDEA_CONFIG={brand:'Toolidea',tagline:'90+ Free Online Tools',ads:{enabled:false,network:'monetag'}};</script>
 
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-
   <div class="orb orb-1"></div>
   <div class="orb orb-2"></div>
 
-  <!-- Header -->
   <header class="site-header">
     <button class="hamburger" id="hamburgerBtn" aria-label="Toggle Tool Navigation">☰</button>
-    <a class="brand" href="#/qrcode">
+    <a class="brand" href="#/qrcode" aria-label="Toolidea home">
       <div class="brand-mark">🧰</div>
       <div class="brand-text">
-        <strong>Toolbox Pro</strong>
+        <strong>Toolidea</strong>
         <span>90+ Online Tools</span>
       </div>
     </a>
     <div class="header-search">
       <span>🔍</span>
-      <input type="text" id="toolSearch" placeholder="Search 90+ tools (e.g. SHA-256, regex, sql, base64)..." />
+      <input type="search" id="toolSearch" placeholder="Search 90+ tools…" autocomplete="off" />
     </div>
-    <nav class="header-nav">
+    <nav class="header-nav" aria-label="Site navigation">
       <button data-modal="about">About</button>
       <button data-modal="privacy">Privacy</button>
       <button data-modal="terms">Terms</button>
@@ -47,18 +45,14 @@
     </nav>
   </header>
 
-  <!-- Leaderboard Ad Slot -->
-  <div class="ad-slot ad-leaderboard">
+  <!-- Monetag reserved slot: do not add a fake publisher/zone ID. -->
+  <div class="ad-slot ad-leaderboard" data-ad-slot="leaderboard" aria-label="Advertisement">
     <span class="ad-label">Advertisement</span>
-    <div class="ad-placeholder">
-      <!-- PASTE GOOGLE ADSENSE CODE HERE -->
-      <span>Leaderboard Ad Slot</span>
-    </div>
+    <div class="ad-placeholder"><span>Advertisement</span></div>
   </div>
 
-  <!-- Application Shell -->
   <div class="app-shell">
-    <nav class="sidebar" id="sidebar">
+    <nav class="sidebar" id="sidebar" aria-label="Tool categories">
       <div id="sidebarContent"></div>
     </nav>
 
@@ -67,43 +61,31 @@
         <h1 id="toolTitle">Loading Tool…</h1>
         <p id="toolDesc"></p>
       </div>
-
       <div class="tool-content" id="toolContainer"></div>
 
-      <!-- In-Content Ad Slot -->
-      <div class="ad-slot ad-incontent">
+      <!-- Monetag reserved slot: responsive in-content placement. -->
+      <div class="ad-slot ad-incontent" data-ad-slot="incontent" aria-label="Advertisement">
         <span class="ad-label">Advertisement</span>
-        <div class="ad-placeholder">
-          <!-- PASTE IN-CONTENT ADSENSE CODE HERE -->
-          <span>In-Content Responsive Ad Unit</span>
-        </div>
+        <div class="ad-placeholder"><span>Advertisement</span></div>
       </div>
     </main>
   </div>
 
-  <!-- Bottom Ad Slot -->
-  <div class="ad-slot ad-footer">
+  <div class="ad-slot ad-footer" data-ad-slot="footer" aria-label="Advertisement">
     <span class="ad-label">Advertisement</span>
-    <div class="ad-placeholder">
-      <!-- PASTE FOOTER ADSENSE CODE HERE -->
-      <span>Bottom Banner Ad Unit</span>
-    </div>
+    <div class="ad-placeholder"><span>Advertisement</span></div>
   </div>
 
-  <!-- Footer -->
   <footer class="site-footer">
     <div class="footer-grid">
       <div class="footer-col">
-        <div class="brand" style="margin-bottom: 12px;">
-          <div class="brand-mark" style="width:28px;height:28px;font-size:0.9rem;">🧰</div>
-          <strong>Toolbox Pro</strong>
+        <div class="brand" style="margin-bottom:12px;">
+          <div class="brand-mark" style="width:28px;height:28px;font-size:.9rem;">🧰</div>
+          <strong>Toolidea</strong>
         </div>
-        <p>A fast, private suite of browser-based utilities. All tools execute locally on your device without server communication.</p>
+        <p>Fast, privacy-focused browser utilities. Tool operations run locally whenever the browser supports the operation.</p>
       </div>
-      <div class="footer-col">
-        <h4>Navigation</h4>
-        <ul id="footerCategoryList"></ul>
-      </div>
+      <div class="footer-col"><h4>Navigation</h4><ul id="footerCategoryList"></ul></div>
       <div class="footer-col">
         <h4>Company & Legal</h4>
         <ul>
@@ -114,7 +96,7 @@
         </ul>
       </div>
       <div class="footer-col">
-        <h4>Support & Compliance</h4>
+        <h4>Support</h4>
         <ul>
           <li><button data-modal="contact">Contact Support</button></li>
           <li><button data-modal="disclaimer">Usage Disclaimer</button></li>
@@ -123,27 +105,25 @@
       </div>
     </div>
     <div class="footer-bottom">
-      <span>&copy; <span id="yearNow"></span> Toolbox Pro. All utilities client-side.</span>
-      <span>No data leaves your browser.</span>
+      <span>© <span id="yearNow"></span> Toolidea.</span>
+      <span>Tool processing is browser-first.</span>
     </div>
   </footer>
 
-  <!-- Cookie Consent Banner -->
   <div class="cookie-banner" id="cookieBanner">
-    <p>We use cookies to analyze web traffic and serve ads in accordance with Google publisher requirements. See our <button data-modal="cookies" class="link-btn">Cookie Policy</button>.</p>
+    <p>We use cookies or similar browser storage only where needed for site preferences and consent. Advertising behavior will be updated when the final ad network is enabled.</p>
     <div class="cookie-actions">
-      <button class="btn" id="cookieAcceptBtn">Accept All</button>
+      <button class="btn" id="cookieAcceptBtn">Accept</button>
       <button class="btn btn-secondary" id="cookieDeclineBtn">Necessary Only</button>
     </div>
   </div>
 
-  <!-- Modal Overlay -->
   <div class="modal-overlay" id="modalOverlay">
     <div class="modal-box" id="modalBox"></div>
   </div>
 
-  <!-- Scripts -->
   <script src="policies.js"></script>
   <script src="app.js"></script>
+  <script src="production.js"></script>
 </body>
 </html>
