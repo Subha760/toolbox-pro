@@ -16,18 +16,22 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for f in Index.html index.html app.js policies.js Style.css upgrade.css upgrade.js final-ui.js ads.txt robots.txt SECURITY.md production-test.html; do test -f "$f"; done
+          for f in Index.html index.html app.js policies.js Style.css upgrade.css upgrade.js clean-nav.js clean-nav.css consent.js photo-menu-fix.js ads.txt robots.txt SECURITY.md production-test.html; do test -f "$f"; done
           grep -q 'href="Style.css"' Index.html
           grep -q 'href="upgrade.css"' Index.html
+          grep -q 'href="clean-nav.css"' Index.html
           grep -q 'src="app.js"' Index.html
           grep -q 'src="upgrade.js"' Index.html
-          grep -q 'src="final-ui.js"' Index.html
+          grep -q 'src="clean-nav.js"' Index.html
+          grep -q 'src="consent.js"' Index.html
+          ! grep -Eq 'final-ui\.js|site-hardening\.js|nav-hotfix\.js|nav-final\.js' Index.html
       - name: Check for placeholder ad credentials
         shell: bash
         run: |
           set -euo pipefail
           if grep -RIn --exclude-dir=.git --exclude='production-check.yml' 'pub-XXXXXXXXXXXXXXXX\|ca-pub-XXXXXXXXXXXXXXXX' .; then
-            echo 'WARNING: placeholder advertising credentials are present. Replace them before enabling production advertising.'
+            echo 'ERROR: placeholder advertising credentials are present.'
+            exit 1
           else
             echo 'No advertising credential placeholders found.'
           fi
@@ -35,12 +39,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node --check app.js
-          node --check upgrade.js
-          node --check final-ui.js
+          for f in app.js production.js enhancements.js motion.js photo-menu-fix.js upgrade.js consent.js clean-nav.js; do node --check "$f"; done
       - name: Check HTML structure
         shell: bash
         run: |
+          set -euo pipefail
           python3 - <<'PY'
           from html.parser import HTMLParser
           from pathlib import Path
@@ -48,4 +51,8 @@ jobs:
               class Parser(HTMLParser): pass
               Parser().feed(Path(name).read_text(encoding='utf-8'))
               print(name, 'parsed successfully')
+          html=Path('Index.html').read_text(encoding='utf-8')
+          assert html.count('id="toolideaMenuBtn"') == 1, 'menu button must be unique'
+          assert html.count('id="sidebar"') == 1, 'sidebar must be unique'
+          print('navigation IDs are unique')
           PY
