@@ -1,0 +1,2 @@
+/* Compatibility entrypoint for the production build. Keep the original stylesheet filename intact. */
+@import url("./Style.css");
