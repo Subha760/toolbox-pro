@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Toolidea Production Test</title><link rel="stylesheet" href="styles.css"><style>body{padding:24px}.test{max-width:1000px;margin:auto}.ok{color:#42d392}.bad{color:#ff6b6b}.item{padding:10px;border-bottom:1px solid #ffffff18}.bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.meter{height:10px;background:#ffffff15;border-radius:10px;overflow:hidden}.meter i{display:block;height:100%;width:0;background:#42d392;transition:width .2s}</style></head>
+<body><main class="test"><h1>Toolidea Production Test</h1><p>This smoke test checks that every registered tool can render without throwing a JavaScript exception. It does not replace manual interaction testing.</p><div class="bar"><button class="btn" id="run">Run 90+ Tool Smoke Test</button><strong id="summary">Ready</strong></div><div class="meter"><i id="meter"></i></div><div id="results" class="result-box" style="display:block;margin-top:16px"></div><div id="sandbox" style="position:fixed;left:-10000px;top:-10000px;width:900px"></div></main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script><script src="policies.js"></script><script src="app.js"></script><script src="production.js"></script>
+<script>
+(function(){
+  function run(){
+    var tools=window.TOOLIDEA_TOOLS||{};var keys=Object.keys(tools);var out=document.getElementById('results');var meter=document.getElementById('meter');var summary=document.getElementById('summary');var sandbox=document.getElementById('sandbox');
+    out.innerHTML=''; if(!keys.length){summary.textContent='No tools found';return;}
+    var pass=0,fail=0,i=0;
+    function next(){
+      if(i>=keys.length){meter.style.width='100%';summary.textContent=pass+' passed / '+fail+' failed / '+keys.length+' total';return;}
+      var key=keys[i++],tool=tools[key],box=document.createElement('div');box.innerHTML='<div></div>';var c=box.firstChild;sandbox.innerHTML='';sandbox.appendChild(c);var ok=true,err='';
+      try{if(!tool||typeof tool.render!=='function')throw new Error('Missing render function');tool.render(c);}catch(e){ok=false;err=e&&e.message?e.message:String(e);}
+      var row=document.createElement('div');row.className='item '+(ok?'ok':'bad');row.textContent=(ok?'✓ ':'✗ ')+key+' — '+(tool&&tool.name?tool.name:'Unnamed')+(ok?'':' — '+err);out.appendChild(row);
+      if(ok)pass++;else fail++;meter.style.width=Math.round((i/keys.length)*100)+'%';setTimeout(next,0);
+    }next();
+  }
+  document.getElementById('run').addEventListener('click',run);
+})();
+</script></body></html>
