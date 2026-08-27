@@ -1,37 +1,27 @@
 name: Production readiness check
-
 on:
   push:
     branches: [main, production-readiness]
   pull_request:
     branches: [main]
-
 permissions:
   contents: read
-
 jobs:
   static-check:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Verify required files and references
         shell: bash
         run: |
           set -euo pipefail
-          test -f Index.html
-          test -f app.js
-          test -f policies.js
-          test -f Style.css
-          test -f styles.css
-          test -f ads.txt
-          test -f robots.txt
-          test -f SECURITY.md
-          grep -q 'href="styles.css"' Index.html
-          grep -q 'src="policies.js"' Index.html
+          for f in Index.html index.html app.js policies.js Style.css upgrade.css upgrade.js final-ui.js ads.txt robots.txt SECURITY.md production-test.html; do test -f "$f"; done
+          grep -q 'href="Style.css"' Index.html
+          grep -q 'href="upgrade.css"' Index.html
           grep -q 'src="app.js"' Index.html
-
+          grep -q 'src="upgrade.js"' Index.html
+          grep -q 'src="final-ui.js"' Index.html
       - name: Check for placeholder ad credentials
         shell: bash
         run: |
@@ -41,19 +31,21 @@ jobs:
           else
             echo 'No advertising credential placeholders found.'
           fi
-
       - name: Check JavaScript syntax
         shell: bash
-        run: node --check app.js
-
+        run: |
+          set -euo pipefail
+          node --check app.js
+          node --check upgrade.js
+          node --check final-ui.js
       - name: Check HTML structure
         shell: bash
         run: |
           python3 - <<'PY'
           from html.parser import HTMLParser
           from pathlib import Path
-          class Parser(HTMLParser):
-              pass
-          Parser().feed(Path('Index.html').read_text(encoding='utf-8'))
-          print('Index.html parsed successfully')
+          for name in ('Index.html','index.html','production-test.html'):
+              class Parser(HTMLParser): pass
+              Parser().feed(Path(name).read_text(encoding='utf-8'))
+              print(name, 'parsed successfully')
           PY
