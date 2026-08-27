@@ -6,125 +6,49 @@
   <meta name="theme-color" content="#7c5cff" />
   <meta name="description" content="Toolidea — 90+ free browser-based tools for images, text, developers, math, conversions, finance, dates and productivity. Fast and privacy-focused." />
   <title>Toolidea – 90+ Free Online Tools</title>
-
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-
   <!-- Monetag integration point. Keep disabled until the real Monetag zone/tag is supplied. -->
   <script>window.TOOLIDEA_CONFIG={brand:'Toolidea',tagline:'90+ Free Online Tools',ads:{enabled:false,network:'monetag',leaderboard:true,incontent:true,footer:true,popup:false}};</script>
-
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div class="orb orb-1"></div>
-  <div class="orb orb-2"></div>
-
+  <div class="orb orb-1"></div><div class="orb orb-2"></div>
   <header class="site-header">
     <button class="hamburger" id="hamburgerBtn" aria-label="Toggle Tool Navigation">☰</button>
-    <a class="brand" href="#/qrcode" aria-label="Toolidea home">
-      <div class="brand-mark">🧰</div>
-      <div class="brand-text">
-        <strong>Toolidea</strong>
-        <span>90+ Online Tools</span>
-      </div>
-    </a>
-    <div class="header-search">
-      <span>🔍</span>
-      <input type="search" id="toolSearch" placeholder="Search 90+ tools…" autocomplete="off" />
-    </div>
-    <nav class="header-nav" aria-label="Site navigation">
-      <button data-modal="about">About</button>
-      <button data-modal="privacy">Privacy</button>
-      <button data-modal="terms">Terms</button>
-      <button data-modal="contact">Contact</button>
-    </nav>
+    <a class="brand" href="#/qrcode" aria-label="Toolidea home"><div class="brand-mark">🧰</div><div class="brand-text"><strong>Toolidea</strong><span>90+ Online Tools</span></div></a>
+    <div class="header-search"><span>🔍</span><input type="search" id="toolSearch" placeholder="Search 90+ tools…" autocomplete="off" /></div>
+    <nav class="header-nav" aria-label="Site navigation"><button data-modal="about">About</button><button data-modal="privacy">Privacy</button><button data-modal="terms">Terms</button><button data-modal="contact">Contact</button></nav>
   </header>
-
-  <!-- Monetag reserved slot: real tag/zone is added only after the owner supplies it. -->
-  <div class="ad-slot ad-leaderboard" data-ad-slot="leaderboard" aria-label="Advertisement">
-    <span class="ad-label">Advertisement</span>
-    <div class="ad-placeholder"><span>Ad space reserved</span></div>
-  </div>
-
+  <div class="ad-slot ad-leaderboard" data-ad-slot="leaderboard" aria-label="Advertisement"><span class="ad-label">Advertisement</span><div class="ad-placeholder"><span>Ad space reserved</span></div></div>
   <div class="app-shell">
-    <nav class="sidebar" id="sidebar" aria-label="Tool categories">
-      <div id="sidebarContent"></div>
-    </nav>
-
+    <nav class="sidebar" id="sidebar" aria-label="Tool categories"><div id="sidebarContent"></div></nav>
     <main class="main" id="mainContent">
-      <div class="tool-header">
-        <h1 id="toolTitle">Loading Tool…</h1>
-        <p id="toolDesc"></p>
-      </div>
+      <div class="tool-header"><h1 id="toolTitle">Loading Tool…</h1><p id="toolDesc"></p></div>
       <div class="tool-content" id="toolContainer"></div>
-
-      <!-- Monetag reserved slot: responsive in-content placement. -->
-      <div class="ad-slot ad-incontent" data-ad-slot="incontent" aria-label="Advertisement">
-        <span class="ad-label">Advertisement</span>
-        <div class="ad-placeholder"><span>Ad space reserved</span></div>
-      </div>
+      <div class="ad-slot ad-incontent" data-ad-slot="incontent" aria-label="Advertisement"><span class="ad-label">Advertisement</span><div class="ad-placeholder"><span>Ad space reserved</span></div></div>
     </main>
   </div>
-
-  <div class="ad-slot ad-footer" data-ad-slot="footer" aria-label="Advertisement">
-    <span class="ad-label">Advertisement</span>
-    <div class="ad-placeholder"><span>Ad space reserved</span></div>
-  </div>
-
+  <div class="ad-slot ad-footer" data-ad-slot="footer" aria-label="Advertisement"><span class="ad-label">Advertisement</span><div class="ad-placeholder"><span>Ad space reserved</span></div></div>
   <footer class="site-footer">
     <div class="footer-grid">
-      <div class="footer-col">
-        <div class="brand" style="margin-bottom:12px;">
-          <div class="brand-mark" style="width:28px;height:28px;font-size:.9rem;">🧰</div>
-          <strong>Toolidea</strong>
-        </div>
-        <p>Fast, privacy-focused browser utilities. Tool operations run locally whenever the browser supports the operation.</p>
-      </div>
+      <div class="footer-col"><div class="brand" style="margin-bottom:12px;"><div class="brand-mark" style="width:28px;height:28px;font-size:.9rem;">🧰</div><strong>Toolidea</strong></div><p>Fast, privacy-focused browser utilities. Tool operations run locally whenever the browser supports the operation.</p></div>
       <div class="footer-col"><h4>Navigation</h4><ul id="footerCategoryList"></ul></div>
-      <div class="footer-col">
-        <h4>Company & Legal</h4>
-        <ul>
-          <li><button data-modal="about">About Us</button></li>
-          <li><button data-modal="privacy">Privacy Policy</button></li>
-          <li><button data-modal="terms">Terms of Service</button></li>
-          <li><button data-modal="cookies">Cookie Settings</button></li>
-        </ul>
-      </div>
-      <div class="footer-col">
-        <h4>Support</h4>
-        <ul>
-          <li><button data-modal="contact">Contact Support</button></li>
-          <li><button data-modal="disclaimer">Usage Disclaimer</button></li>
-          <li><button data-modal="gdpr">GDPR / CCPA Notice</button></li>
-        </ul>
-      </div>
+      <div class="footer-col"><h4>Company & Legal</h4><ul><li><button data-modal="about">About Us</button></li><li><button data-modal="privacy">Privacy Policy</button></li><li><button data-modal="terms">Terms of Service</button></li><li><button data-modal="cookies">Cookie Settings</button></li></ul></div>
+      <div class="footer-col"><h4>Support</h4><ul><li><button data-modal="contact">Contact Support</button></li><li><button data-modal="disclaimer">Usage Disclaimer</button></li><li><button data-modal="gdpr">GDPR / CCPA Notice</button></li></ul></div>
     </div>
-    <div class="footer-bottom">
-      <span>© <span id="yearNow"></span> Toolidea.</span>
-      <span>Tool processing is browser-first.</span>
-    </div>
+    <div class="footer-bottom"><span>© <span id="yearNow"></span> Toolidea.</span><span>Tool processing is browser-first.</span></div>
   </footer>
-
-  <div class="cookie-banner" id="cookieBanner">
-    <p>We use cookies or similar browser storage only where needed for site preferences and consent. Advertising behavior will be updated when the final ad network is enabled.</p>
-    <div class="cookie-actions">
-      <button class="btn" id="cookieAcceptBtn">Accept</button>
-      <button class="btn btn-secondary" id="cookieDeclineBtn">Necessary Only</button>
-    </div>
-  </div>
-
-  <div class="modal-overlay" id="modalOverlay">
-    <div class="modal-box" id="modalBox"></div>
-  </div>
-
+  <div class="cookie-banner" id="cookieBanner"><p>We use cookies or similar browser storage only where needed for site preferences and consent. Advertising behavior will be updated when the final ad network is enabled.</p><div class="cookie-actions"><button class="btn" id="cookieAcceptBtn">Accept</button><button class="btn btn-secondary" id="cookieDeclineBtn">Necessary Only</button></div></div>
+  <div class="modal-overlay" id="modalOverlay"><div class="modal-box" id="modalBox"></div></div>
   <script src="policies.js"></script>
   <script src="app.js"></script>
   <script src="production.js"></script>
   <script src="enhancements.js"></script>
+  <script src="motion.js"></script>
 </body>
 </html>
