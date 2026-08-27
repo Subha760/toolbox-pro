@@ -15,8 +15,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
-  <!-- Monetag integration point: add the official site/ad-channel tag here after your Monetag zone is created. -->
-  <script>window.TOOLIDEA_CONFIG={brand:'Toolidea',tagline:'90+ Free Online Tools',ads:{enabled:false,network:'monetag'}};</script>
+  <!-- Monetag integration point. Keep disabled until the real Monetag zone/tag is supplied. -->
+  <script>window.TOOLIDEA_CONFIG={brand:'Toolidea',tagline:'90+ Free Online Tools',ads:{enabled:false,network:'monetag',leaderboard:true,incontent:true,footer:true,popup:false}};</script>
 
   <link rel="stylesheet" href="styles.css" />
 </head>
@@ -45,10 +45,10 @@
     </nav>
   </header>
 
-  <!-- Monetag reserved slot: do not add a fake publisher/zone ID. -->
+  <!-- Monetag reserved slot: real tag/zone is added only after the owner supplies it. -->
   <div class="ad-slot ad-leaderboard" data-ad-slot="leaderboard" aria-label="Advertisement">
     <span class="ad-label">Advertisement</span>
-    <div class="ad-placeholder"><span>Advertisement</span></div>
+    <div class="ad-placeholder"><span>Ad space reserved</span></div>
   </div>
 
   <div class="app-shell">
@@ -66,14 +66,14 @@
       <!-- Monetag reserved slot: responsive in-content placement. -->
       <div class="ad-slot ad-incontent" data-ad-slot="incontent" aria-label="Advertisement">
         <span class="ad-label">Advertisement</span>
-        <div class="ad-placeholder"><span>Advertisement</span></div>
+        <div class="ad-placeholder"><span>Ad space reserved</span></div>
       </div>
     </main>
   </div>
 
   <div class="ad-slot ad-footer" data-ad-slot="footer" aria-label="Advertisement">
     <span class="ad-label">Advertisement</span>
-    <div class="ad-placeholder"><span>Advertisement</span></div>
+    <div class="ad-placeholder"><span>Ad space reserved</span></div>
   </div>
 
   <footer class="site-footer">
@@ -125,5 +125,6 @@
   <script src="policies.js"></script>
   <script src="app.js"></script>
   <script src="production.js"></script>
+  <script src="enhancements.js"></script>
 </body>
 </html>
