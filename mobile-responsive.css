@@ -1,0 +1,46 @@
+/* Toolidea mobile-first stability layer. Loaded after the legacy styles so it wins without rewriting tool logic. */
+*{box-sizing:border-box}
+html,body{width:100%;max-width:100%;overflow-x:hidden}
+img,canvas,video,svg{max-width:100%;height:auto}
+button,input,select,textarea{font:inherit;max-width:100%}
+@media(max-width:900px){
+  body{min-width:0!important;-webkit-text-size-adjust:100%;text-rendering:optimizeLegibility}
+  .site-header{width:100%!important;max-width:100%!important;padding:14px 16px!important;gap:12px!important;flex-wrap:wrap!important}
+  .brand{min-width:0!important;flex:1 1 auto!important}
+  .brand-text{min-width:0!important}.brand-text strong,.brand-text span{white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+  .header-search{order:10!important;flex:1 0 100%!important;width:100%!important;max-width:none!important}
+  .header-search input{width:100%!important;min-width:0!important}
+  .header-nav{display:none!important}
+  .app-shell{display:block!important;width:100%!important;max-width:100%!important;margin:0!important;padding:0 12px!important}
+  .main{width:100%!important;max-width:100%!important;min-width:0!important;padding:12px 0 24px!important}
+  .tool-header{width:100%!important;padding:8px 6px!important}
+  .tool-header h1{font-size:clamp(1.35rem,6vw,2rem)!important;line-height:1.18!important;overflow-wrap:anywhere}
+  .tool-desc{font-size:.92rem!important}
+  .tool-content{width:100%!important;max-width:100%!important;min-width:0!important;overflow:visible!important}
+  .tool-content>*{max-width:100%!important}
+  .row{display:flex!important;flex-wrap:wrap!important;gap:10px!important;width:100%!important}
+  .row>*{min-width:0!important;max-width:100%!important}
+  .row input,.row select,.row textarea{flex:1 1 180px!important;width:100%!important}
+  .tool-content input,.tool-content select,.tool-content textarea{width:100%;min-height:46px}
+  .tool-content textarea{min-height:120px;resize:vertical}
+  .tool-content .btn,button.btn{min-height:46px;max-width:100%;touch-action:manipulation}
+  .result-box{width:100%!important;max-width:100%!important;overflow-wrap:anywhere;overflow-x:auto}
+  .ad-slot{width:100%!important;max-width:100%!important;margin-left:0!important;margin-right:0!important}
+  .ad-placeholder{min-height:120px!important}
+  .site-footer{width:100%!important;overflow:hidden!important}
+  .footer-grid{grid-template-columns:1fr!important;gap:18px!important}
+  table{display:block!important;width:100%!important;overflow-x:auto!important;-webkit-overflow-scrolling:touch}
+  pre,code{max-width:100%!important;overflow:auto!important;white-space:pre-wrap!important;overflow-wrap:anywhere!important}
+}
+@media(max-width:520px){
+  .site-header{padding:12px 12px 14px!important}
+  .hamburger#hamburgerBtn{width:60px!important;min-width:60px!important;height:54px!important}
+  .brand-mark{width:52px!important;height:52px!important;font-size:1.7rem!important}
+  .brand-text strong{font-size:1.25rem!important}.brand-text span{font-size:.72rem!important}
+  .header-search input{font-size:16px!important}
+  .tool-content{padding:0 2px!important}
+  .tool-content .row{gap:8px!important}
+  .tool-content label{line-height:1.3!important}
+  .ad-placeholder{min-height:96px!important}
+}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}}
