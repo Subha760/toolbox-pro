@@ -3,147 +3,251 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>Toolbox Pro – 90+ Free Online Developer & Daily Utilities</title>
-  <meta name="description" content="Free collection of 90+ browser-based tools: image processing, cryptographic hashing, text manipulation, math calculators, and unit converters. Fast, private, and offline-ready." />
-  
-  <!-- Preconnect & External CDNs -->
+  <meta name="theme-color" content="#0a0a18" />
+  <title>Toolbox Pro — 90+ Free Online Tools</title>
+  <meta name="description" content="Toolbox Pro is a fast, private collection of 90+ browser-based utilities. Process files, text, images, code, numbers and more directly in your browser." />
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-  
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
-  <!-- Google AdSense Tag -->
-  <!-- <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" crossorigin="anonymous"></script> -->
+  <link rel="stylesheet" href="Style.css" />
+  <style>
+    /* Production navigation + landing-page fixes */
+    body.landing-mode .app-shell,
+    body.landing-mode .ad-incontent,
+    body.landing-mode .ad-footer,
+    body.landing-mode .site-footer { display: none !important; }
+    body.landing-mode .ad-leaderboard { margin-top: 10px; }
 
-  <link rel="stylesheet" href="styles.css" />
+    .hamburger {
+      display: inline-flex !important;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      z-index: 1201;
+      border: 1px solid rgba(255,255,255,.2);
+      background: rgba(255,255,255,.08);
+      transition: transform .2s ease, background .2s ease;
+    }
+    .hamburger:hover { background: rgba(124,92,255,.28); transform: scale(1.04); }
+    .hamburger .hamburger-lines,
+    .hamburger .hamburger-lines::before,
+    .hamburger .hamburger-lines::after {
+      display: block; width: 20px; height: 2px; border-radius: 3px; background: currentColor; content: "";
+    }
+    .hamburger .hamburger-lines { position: relative; }
+    .hamburger .hamburger-lines::before { position: absolute; top: -6px; }
+    .hamburger .hamburger-lines::after { position: absolute; top: 6px; }
+    .hamburger[aria-expanded="true"] { background: rgba(124,92,255,.34); }
+
+    .tool-drawer-backdrop {
+      display: none; position: fixed; inset: 0; z-index: 1090; background: rgba(0,0,0,.58); backdrop-filter: blur(3px);
+    }
+    body.drawer-open .tool-drawer-backdrop { display: block; }
+    body.drawer-open { overflow: hidden; }
+
+    .sidebar {
+      position: fixed !important; left: 0; top: 66px; bottom: 0; z-index: 1100;
+      height: auto !important; max-height: none !important; width: min(320px, 88vw) !important;
+      transform: translateX(-105%); transition: transform .28s cubic-bezier(.4,0,.2,1), box-shadow .28s ease;
+      overflow-y: auto !important; padding: 18px 0 30px !important;
+      box-shadow: 18px 0 60px rgba(0,0,0,.42); visibility: hidden;
+    }
+    .sidebar.open { transform: translateX(0); visibility: visible; }
+    .sidebar ul li { user-select: none; -webkit-tap-highlight-color: transparent; }
+    .sidebar ul li:active { transform: scale(.99); }
+
+    .landing {
+      position: relative; z-index: 1; min-height: calc(100vh - 66px); padding: 34px 24px 70px;
+      overflow: hidden;
+    }
+    .landing-inner { max-width: 1180px; margin: 0 auto; }
+    .hero-grid { display: grid; grid-template-columns: 1.05fr .95fr; gap: 48px; align-items: center; min-height: 650px; }
+    .hero-copy { position: relative; z-index: 2; }
+    .eyebrow { display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px; border: 1px solid rgba(255,255,255,.13); background: rgba(255,255,255,.06); border-radius: 999px; color: var(--text-2); font-size: .75rem; font-weight: 700; letter-spacing: .7px; text-transform: uppercase; }
+    .eyebrow-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--cyan); box-shadow: 0 0 14px var(--cyan); animation: pulseDot 1.8s ease-in-out infinite; }
+    @keyframes pulseDot { 50% { transform: scale(1.5); opacity: .55; } }
+    .hero-title { margin-top: 18px; font-family: var(--font-display); font-size: clamp(3rem, 7vw, 5.8rem); line-height: .94; letter-spacing: -4px; max-width: 720px; }
+    .hero-title span { display: block; background: linear-gradient(120deg, #fff 15%, var(--violet-light) 55%, var(--cyan)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .hero-copy p { max-width: 650px; margin-top: 24px; color: var(--text-2); font-size: 1.05rem; line-height: 1.75; }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
+    .hero-actions .btn { margin-top: 0; text-decoration: none; }
+    .hero-secondary { display: inline-flex; align-items: center; justify-content: center; padding: 12px 22px; border-radius: 999px; border: 1px solid var(--glass-border); background: rgba(255,255,255,.06); color: var(--text-1); font-weight: 700; cursor: pointer; }
+    .hero-secondary:hover { background: rgba(255,255,255,.11); }
+    .hero-stats { display: flex; flex-wrap: wrap; gap: 26px; margin-top: 34px; }
+    .hero-stat strong { display: block; font-family: var(--font-display); font-size: 1.35rem; }
+    .hero-stat span { color: var(--text-3); font-size: .72rem; text-transform: uppercase; letter-spacing: 1px; }
+
+    .motion-stage { position: relative; min-height: 540px; display: grid; place-items: center; perspective: 1200px; }
+    .motion-glow { position: absolute; width: 410px; height: 410px; border-radius: 50%; background: radial-gradient(circle, rgba(124,92,255,.28), transparent 68%); filter: blur(12px); animation: stagePulse 5s ease-in-out infinite; }
+    @keyframes stagePulse { 50% { transform: scale(1.13); opacity: .65; } }
+    .motion-window { position: relative; width: min(520px, 100%); border: 1px solid rgba(255,255,255,.16); border-radius: 24px; background: rgba(12,10,29,.74); box-shadow: 0 35px 100px rgba(0,0,0,.48), 0 0 70px rgba(124,92,255,.16); backdrop-filter: blur(18px); transform: rotateY(-7deg) rotateX(4deg); animation: floatWindow 6s ease-in-out infinite; overflow: hidden; }
+    @keyframes floatWindow { 50% { transform: rotateY(4deg) rotateX(-2deg) translateY(-14px); } }
+    .motion-topbar { height: 42px; display: flex; align-items: center; gap: 7px; padding: 0 15px; border-bottom: 1px solid rgba(255,255,255,.08); }
+    .motion-topbar i { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,.25); }
+    .motion-topbar span { margin-left: auto; color: var(--text-3); font: 500 .65rem var(--font-mono); }
+    .motion-screen { padding: 20px; }
+    .motion-title { height: 18px; width: 58%; border-radius: 6px; background: linear-gradient(90deg, rgba(255,255,255,.9), rgba(124,92,255,.6)); margin-bottom: 10px; animation: shimmer 2.8s linear infinite; background-size: 200% 100%; }
+    @keyframes shimmer { to { background-position: -200% 0; } }
+    .motion-sub { height: 8px; width: 76%; border-radius: 4px; background: rgba(255,255,255,.13); margin-bottom: 24px; }
+    .motion-tools { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+    .motion-tool { height: 92px; padding: 13px; border: 1px solid rgba(255,255,255,.09); border-radius: 14px; background: rgba(255,255,255,.055); animation: cardFloat 4s ease-in-out infinite; }
+    .motion-tool:nth-child(2) { animation-delay: .4s; } .motion-tool:nth-child(3) { animation-delay: .8s; } .motion-tool:nth-child(4) { animation-delay: 1.2s; } .motion-tool:nth-child(5) { animation-delay: 1.6s; } .motion-tool:nth-child(6) { animation-delay: 2s; }
+    @keyframes cardFloat { 50% { transform: translateY(-5px); border-color: rgba(124,92,255,.35); } }
+    .motion-icon { width: 28px; height: 28px; border-radius: 9px; display: grid; place-items: center; background: linear-gradient(135deg, rgba(124,92,255,.65), rgba(34,211,238,.35)); margin-bottom: 9px; font-size: .85rem; }
+    .motion-tool b { display: block; font-size: .66rem; color: var(--text-2); }
+    .motion-tool small { color: var(--text-3); font-size: .55rem; }
+    .motion-progress { margin-top: 15px; height: 5px; border-radius: 5px; background: rgba(255,255,255,.08); overflow: hidden; }
+    .motion-progress span { display: block; width: 68%; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--violet), var(--cyan)); animation: progress 3s ease-in-out infinite alternate; }
+    @keyframes progress { to { width: 92%; } }
+    .motion-badge { position: absolute; right: -12px; top: 74px; padding: 10px 13px; border-radius: 13px; border: 1px solid rgba(255,255,255,.15); background: rgba(16,14,38,.86); box-shadow: 0 16px 40px rgba(0,0,0,.4); font-size: .68rem; color: var(--text-2); animation: badgeFloat 4.5s ease-in-out infinite; }
+    @keyframes badgeFloat { 50% { transform: translate(8px, -10px); } }
+    .motion-badge b { color: #fff; }
+
+    .landing-features { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; margin-top: 25px; }
+    .feature-card { padding: 24px; border: 1px solid var(--glass-border); border-radius: 18px; background: rgba(255,255,255,.045); backdrop-filter: blur(12px); }
+    .feature-card .feature-icon { font-size: 1.5rem; margin-bottom: 12px; }
+    .feature-card h3 { font-family: var(--font-display); font-size: 1rem; margin-bottom: 7px; }
+    .feature-card p { color: var(--text-3); font-size: .78rem; line-height: 1.55; }
+    .landing-note { margin-top: 22px; text-align: center; color: var(--text-3); font-size: .75rem; }
+
+    @media (max-width: 900px) {
+      .hero-grid { grid-template-columns: 1fr; gap: 12px; min-height: auto; padding-top: 28px; }
+      .hero-title { letter-spacing: -2.5px; }
+      .motion-stage { min-height: 430px; }
+      .landing-features { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 600px) {
+      .landing { padding: 20px 15px 50px; }
+      .hero-title { font-size: clamp(2.8rem, 15vw, 4.4rem); }
+      .hero-copy p { font-size: .92rem; }
+      .hero-stats { gap: 17px; }
+      .motion-stage { min-height: 350px; }
+      .motion-window { transform: none; }
+      .motion-tools { gap: 7px; }
+      .motion-tool { height: 78px; padding: 9px; }
+      .motion-badge { right: -4px; top: 48px; }
+      .site-header { padding: 11px 14px; }
+      .brand-text span { display: none; }
+      .header-search { order: 3; margin-top: 7px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; }
+    }
+  </style>
 </head>
-<body>
-
+<body class="landing-mode">
   <div class="orb orb-1"></div>
   <div class="orb orb-2"></div>
 
-  <!-- Header -->
   <header class="site-header">
-    <button class="hamburger" id="hamburgerBtn" aria-label="Toggle Tool Navigation">☰</button>
-    <a class="brand" href="#/qrcode">
+    <button class="hamburger" id="hamburgerBtn" type="button" aria-label="Open tools menu" aria-controls="sidebar" aria-expanded="false"><span class="hamburger-lines" aria-hidden="true"></span></button>
+    <a class="brand" href="#" id="brandHome" aria-label="Toolbox Pro home">
       <div class="brand-mark">🧰</div>
-      <div class="brand-text">
-        <strong>Toolbox Pro</strong>
-        <span>90+ Online Tools</span>
-      </div>
+      <div class="brand-text"><strong>Toolbox Pro</strong><span>90+ Online Tools</span></div>
     </a>
     <div class="header-search">
-      <span>🔍</span>
-      <input type="text" id="toolSearch" placeholder="Search 90+ tools (e.g. SHA-256, regex, sql, base64)..." />
+      <span aria-hidden="true">🔍</span>
+      <input type="text" id="toolSearch" placeholder="Search 90+ tools..." autocomplete="off" />
     </div>
     <nav class="header-nav">
-      <button data-modal="about">About</button>
-      <button data-modal="privacy">Privacy</button>
-      <button data-modal="terms">Terms</button>
-      <button data-modal="contact">Contact</button>
+      <button type="button" data-modal="about">About</button>
+      <button type="button" data-modal="privacy">Privacy</button>
+      <button type="button" data-modal="terms">Terms</button>
+      <button type="button" data-modal="contact">Contact</button>
     </nav>
   </header>
 
-  <!-- Leaderboard Ad Slot -->
+  <div class="tool-drawer-backdrop" id="toolDrawerBackdrop" aria-hidden="true"></div>
+
   <div class="ad-slot ad-leaderboard">
     <span class="ad-label">Advertisement</span>
-    <div class="ad-placeholder">
-      <!-- PASTE GOOGLE ADSENSE CODE HERE -->
-      <span>Leaderboard Ad Slot</span>
-    </div>
+    <div class="ad-placeholder"><span>Leaderboard Ad Slot</span></div>
   </div>
 
-  <!-- Application Shell -->
-  <div class="app-shell">
-    <nav class="sidebar" id="sidebar">
-      <div id="sidebarContent"></div>
-    </nav>
+  <section class="landing" id="landingPage" aria-label="Toolbox Pro introduction">
+    <div class="landing-inner">
+      <div class="hero-grid">
+        <div class="hero-copy">
+          <div class="eyebrow"><span class="eyebrow-dot"></span> Fast • Private • Browser Based</div>
+          <h1 class="hero-title">One toolbox.<span>90+ solutions.</span></h1>
+          <p>Transform images, documents, text, numbers, code and everyday data without installing software. Toolbox Pro is designed to keep the work on your device whenever the browser can do it locally.</p>
+          <div class="hero-actions">
+            <button class="btn" id="heroToolsBtn" type="button">🧰 Explore all tools</button>
+            <button class="hero-secondary" id="heroQrBtn" type="button">Try QR Generator →</button>
+          </div>
+          <div class="hero-stats">
+            <div class="hero-stat"><strong>90+</strong><span>Utilities</span></div>
+            <div class="hero-stat"><strong>0</strong><span>Installations</span></div>
+            <div class="hero-stat"><strong>Local</strong><span>Processing first</span></div>
+          </div>
+        </div>
 
-    <main class="main" id="mainContent">
-      <div class="tool-header">
-        <h1 id="toolTitle">Loading Tool…</h1>
-        <p id="toolDesc"></p>
-      </div>
-
-      <div class="tool-content" id="toolContainer"></div>
-
-      <!-- In-Content Ad Slot -->
-      <div class="ad-slot ad-incontent">
-        <span class="ad-label">Advertisement</span>
-        <div class="ad-placeholder">
-          <!-- PASTE IN-CONTENT ADSENSE CODE HERE -->
-          <span>In-Content Responsive Ad Unit</span>
+        <div class="motion-stage" aria-hidden="true">
+          <div class="motion-glow"></div>
+          <div class="motion-window">
+            <div class="motion-topbar"><i></i><i></i><i></i><span>toolbox-pro / workspace</span></div>
+            <div class="motion-screen">
+              <div class="motion-title"></div><div class="motion-sub"></div>
+              <div class="motion-tools">
+                <div class="motion-tool"><div class="motion-icon">⌘</div><b>Text Tools</b><small>Format & clean</small></div>
+                <div class="motion-tool"><div class="motion-icon">▣</div><b>Images</b><small>Resize & convert</small></div>
+                <div class="motion-tool"><div class="motion-icon">#</div><b>Hash</b><small>Secure locally</small></div>
+                <div class="motion-tool"><div class="motion-icon">↗</div><b>PDF</b><small>Build documents</small></div>
+                <div class="motion-tool"><div class="motion-icon">∞</div><b>Numbers</b><small>Calculate fast</small></div>
+                <div class="motion-tool"><div class="motion-icon">⌁</div><b>Generators</b><small>Create instantly</small></div>
+              </div>
+              <div class="motion-progress"><span></span></div>
+            </div>
+          </div>
+          <div class="motion-badge">⚡ <b>Ready in your browser</b><br/>No upload required for local tools</div>
         </div>
       </div>
+
+      <div class="landing-features">
+        <article class="feature-card"><div class="feature-icon">🔒</div><h3>Privacy-first workflow</h3><p>Client-side tools are built to process your input in the browser instead of sending files to a server.</p></article>
+        <article class="feature-card"><div class="feature-icon">⚡</div><h3>Instant utilities</h3><p>Open the menu, choose a tool and work immediately. No account and no installation for the static toolkit.</p></article>
+        <article class="feature-card"><div class="feature-icon">📱</div><h3>Built for mobile</h3><p>A drawer-based navigation keeps the landing page clean and makes every tool reachable from the three-line menu.</p></article>
+      </div>
+      <div class="landing-note">Use the <strong>☰</strong> menu at any time to open the complete tool library.</div>
+    </div>
+  </section>
+
+  <div class="app-shell" id="appShell">
+    <nav class="sidebar" id="sidebar" aria-label="Tool library" aria-hidden="true"><div id="sidebarContent"></div></nav>
+    <main class="main" id="mainContent">
+      <div class="tool-header"><h1 id="toolTitle">Loading Tool…</h1><p id="toolDesc"></p></div>
+      <div class="tool-content" id="toolContainer"></div>
+      <div class="ad-slot ad-incontent"><span class="ad-label">Advertisement</span><div class="ad-placeholder"><span>In-Content Responsive Ad Unit</span></div></div>
     </main>
   </div>
 
-  <!-- Bottom Ad Slot -->
-  <div class="ad-slot ad-footer">
-    <span class="ad-label">Advertisement</span>
-    <div class="ad-placeholder">
-      <!-- PASTE FOOTER ADSENSE CODE HERE -->
-      <span>Bottom Banner Ad Unit</span>
-    </div>
-  </div>
+  <div class="ad-slot ad-footer"><span class="ad-label">Advertisement</span><div class="ad-placeholder"><span>Bottom Banner Ad Unit</span></div></div>
 
-  <!-- Footer -->
   <footer class="site-footer">
     <div class="footer-grid">
-      <div class="footer-col">
-        <div class="brand" style="margin-bottom: 12px;">
-          <div class="brand-mark" style="width:28px;height:28px;font-size:0.9rem;">🧰</div>
-          <strong>Toolbox Pro</strong>
-        </div>
-        <p>A fast, private suite of browser-based utilities. All tools execute locally on your device without server communication.</p>
-      </div>
-      <div class="footer-col">
-        <h4>Navigation</h4>
-        <ul id="footerCategoryList"></ul>
-      </div>
-      <div class="footer-col">
-        <h4>Company & Legal</h4>
-        <ul>
-          <li><button data-modal="about">About Us</button></li>
-          <li><button data-modal="privacy">Privacy Policy</button></li>
-          <li><button data-modal="terms">Terms of Service</button></li>
-          <li><button data-modal="cookies">Cookie Settings</button></li>
-        </ul>
-      </div>
-      <div class="footer-col">
-        <h4>Support & Compliance</h4>
-        <ul>
-          <li><button data-modal="contact">Contact Support</button></li>
-          <li><button data-modal="disclaimer">Usage Disclaimer</button></li>
-          <li><button data-modal="gdpr">GDPR / CCPA Notice</button></li>
-        </ul>
-      </div>
+      <div class="footer-col"><div class="brand" style="margin-bottom:12px;"><div class="brand-mark" style="width:28px;height:28px;font-size:.9rem;">🧰</div><strong>Toolbox Pro</strong></div><p>A fast, private suite of browser-based utilities.</p></div>
+      <div class="footer-col"><h4>Navigation</h4><ul id="footerCategoryList"></ul></div>
+      <div class="footer-col"><h4>Company & Legal</h4><ul><li><button type="button" data-modal="about">About Us</button></li><li><button type="button" data-modal="privacy">Privacy Policy</button></li><li><button type="button" data-modal="terms">Terms of Service</button></li><li><button type="button" data-modal="cookies">Cookie Settings</button></li></ul></div>
+      <div class="footer-col"><h4>Support</h4><ul><li><button type="button" data-modal="contact">Contact Support</button></li><li><button type="button" data-modal="disclaimer">Usage Disclaimer</button></li><li><button type="button" data-modal="gdpr">GDPR / CCPA Notice</button></li></ul></div>
     </div>
-    <div class="footer-bottom">
-      <span>&copy; <span id="yearNow"></span> Toolbox Pro. All utilities client-side.</span>
-      <span>No data leaves your browser.</span>
-    </div>
+    <div class="footer-bottom"><span>&copy; <span id="yearNow"></span> Toolbox Pro.</span><span>Client-side utilities.</span></div>
   </footer>
 
-  <!-- Cookie Consent Banner -->
-  <div class="cookie-banner" id="cookieBanner">
-    <p>We use cookies to analyze web traffic and serve ads in accordance with Google publisher requirements. See our <button data-modal="cookies" class="link-btn">Cookie Policy</button>.</p>
-    <div class="cookie-actions">
-      <button class="btn" id="cookieAcceptBtn">Accept All</button>
-      <button class="btn btn-secondary" id="cookieDeclineBtn">Necessary Only</button>
-    </div>
+  <div class="cookie-banner" id="cookieBanner" role="dialog" aria-live="polite" aria-label="Cookie settings">
+    <p>We use essential storage for your consent choice and may use advertising cookies when you allow them. <button type="button" data-modal="cookies" class="link-btn">Cookie Policy</button>.</p>
+    <div class="cookie-actions"><button class="btn" id="cookieAcceptBtn" type="button">Accept All</button><button class="btn btn-secondary" id="cookieDeclineBtn" type="button">Necessary Only</button></div>
   </div>
 
-  <!-- Modal Overlay -->
-  <div class="modal-overlay" id="modalOverlay">
-    <div class="modal-box" id="modalBox"></div>
-  </div>
+  <div class="modal-overlay" id="modalOverlay"><div class="modal-box" id="modalBox"></div></div>
 
-  <!-- Scripts -->
   <script src="policies.js"></script>
   <script src="app.js"></script>
+  <script src="app-fixes.js"></script>
 </body>
 </html>
