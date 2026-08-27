@@ -1,0 +1,10 @@
+{
+  "name": "Toolidea",
+  "short_name": "Toolidea",
+  "description": "90+ browser-based utilities for everyday and developer tasks.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0a0a18",
+  "theme_color": "#7c5cff",
+  "icons": []
+}

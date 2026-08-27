@@ -1,0 +1,87 @@
+/* Toolinger mobile-first stability layer. Desktop layout remains unchanged. */
+*{box-sizing:border-box}
+html,body{width:100%;max-width:100%;overflow-x:hidden}
+img,canvas,video,svg{max-width:100%;height:auto}
+button,input,select,textarea{font:inherit;max-width:100%}
+
+@media(max-width:900px){
+  :root{--ti-mobile-header:96px}
+  body{min-width:0!important;-webkit-text-size-adjust:100%;text-rendering:optimizeLegibility}
+
+  /* Compact mobile header */
+  .site-header{width:100%!important;max-width:100%!important;padding:10px 12px!important;gap:9px!important;flex-wrap:wrap!important;min-height:var(--ti-mobile-header)!important}
+  .hamburger#hamburgerBtn,.hamburger#toolideaMenuBtn{display:flex!important;align-items:center!important;justify-content:center!important;flex:0 0 48px!important;width:48px!important;min-width:48px!important;height:48px!important;min-height:48px!important;border-radius:14px!important;touch-action:manipulation!important;z-index:10011!important}
+  .brand{min-width:0!important;flex:1 1 auto!important;max-width:calc(100% - 60px)!important}
+  .brand-mark{width:42px!important;height:42px!important;min-width:42px!important;border-radius:12px!important}
+  .brand-text{min-width:0!important}.brand-text strong{font-size:1rem!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}.brand-text span{font-size:.58rem!important;white-space:nowrap!important}
+  .header-search{order:10!important;flex:1 0 100%!important;width:100%!important;max-width:none!important;margin:0!important;height:40px!important;padding:7px 12px!important}
+  .header-search input{width:100%!important;min-width:0!important;font-size:16px!important}
+  .header-nav{display:none!important}
+
+  /* HOME: no categories, no tool content, no desktop grid. */
+  body.ti-mobile-home .app-shell{display:block!important;width:100%!important;max-width:100%!important;margin:0!important;padding:0!important;min-height:0!important}
+  body.ti-mobile-home .app-shell .main{display:none!important}
+  body.ti-mobile-home .app-shell .sidebar{display:block!important}
+  body.ti-mobile-tool .app-shell{display:block!important;width:100%!important;max-width:100%!important;margin:0!important;padding:0!important}
+  body.ti-mobile-tool .app-shell .main{display:block!important;width:100%!important;max-width:100%!important;min-width:0!important;padding:12px 12px 24px!important}
+
+  /* Real mobile drawer. It is closed by default and appears only from ☰. */
+  .sidebar,#toolideaDrawer{position:fixed!important;left:0!important;top:var(--ti-mobile-header)!important;bottom:0!important;width:min(340px,88vw)!important;height:auto!important;max-height:none!important;margin:0!important;padding:12px 0 28px!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch!important;transform:translate3d(-110%,0,0)!important;visibility:hidden!important;opacity:1!important;z-index:10009!important;pointer-events:none!important;box-shadow:20px 0 55px rgba(24,30,65,.24)!important;transition:transform .28s ease,visibility 0s linear .28s!important}
+  .sidebar.is-open,#toolideaDrawer.is-open{transform:translate3d(0,0,0)!important;visibility:visible!important;pointer-events:auto!important;transition:transform .28s ease,visibility 0s!important}
+  #toolingerBackdrop{display:none!important;position:fixed!important;inset:0!important;z-index:10008!important;background:rgba(18,25,55,.48)!important;backdrop-filter:blur(2px)!important;touch-action:manipulation!important}
+  #toolingerBackdrop.is-visible{display:block!important}
+  body:has(#toolingerBackdrop.is-visible){overflow:hidden!important}
+  .sidebar ul{padding:4px 10px!important}
+  .sidebar ul li{min-height:46px!important;padding:11px 14px!important;margin:2px 0!important;border-radius:11px!important;font-size:.88rem!important;touch-action:manipulation!important;-webkit-tap-highlight-color:transparent!important}
+  .category-heading{padding:15px 18px 7px!important;font-size:.7rem!important}
+
+  /* Hide the old desktop ad/spacing from the home area. */
+  body.ti-mobile-home .ad-leaderboard{margin:8px 12px 0!important;width:calc(100% - 24px)!important;min-height:54px!important}
+  body.ti-mobile-home .ad-leaderboard .ad-placeholder{min-height:34px!important}
+  body.ti-mobile-home .ad-footer,body.ti-mobile-home .site-footer{display:none!important}
+
+  /* Mobile landing presentation */
+  .ti-home{min-height:0!important;padding:28px 16px 22px!important;margin:12px!important;border-radius:22px!important}
+  .ti-home-content{max-width:100%!important}
+  .ti-home h1{font-size:clamp(2.45rem,13vw,4rem)!important;line-height:.94!important;letter-spacing:-2.2px!important;margin:15px 0!important}
+  .ti-home p{font-size:.92rem!important;line-height:1.6!important}
+  .ti-actions{display:grid!important;grid-template-columns:1fr!important;gap:9px!important;margin-top:20px!important}
+  .ti-action{width:100%!important;min-height:50px!important}
+  .ti-cubes{right:-150px!important;top:24px!important;opacity:.2!important;transform:scale(.62)!important}
+  .ti-home-ad{margin:18px 0!important}
+  .ti-home-ad .ad-placeholder{min-height:58px!important}
+  .ti-features{grid-template-columns:1fr!important;gap:9px!important;margin-top:12px!important}
+  .ti-feature{padding:14px!important}
+
+  /* Tool pages */
+  .tool-header{width:100%!important;padding:8px 4px!important}
+  .tool-header h1{font-size:clamp(1.35rem,6vw,2rem)!important;line-height:1.18!important;overflow-wrap:anywhere}
+  .tool-desc{font-size:.92rem!important}
+  .tool-content{width:100%!important;max-width:100%!important;min-width:0!important;overflow:visible!important;padding:16px!important}
+  .tool-content>*{max-width:100%!important}
+  .row{display:flex!important;flex-wrap:wrap!important;gap:10px!important;width:100%!important}
+  .row>*{min-width:0!important;max-width:100%!important}
+  .row input,.row select,.row textarea{flex:1 1 180px!important;width:100%!important}
+  .tool-content input,.tool-content select,.tool-content textarea{width:100%!important;min-height:46px!important;font-size:16px!important}
+  .tool-content textarea{min-height:120px!important;resize:vertical}
+  .tool-content .btn,button.btn{min-height:46px!important;max-width:100%!important;touch-action:manipulation!important}
+  .result-box{width:100%!important;max-width:100%!important;overflow-wrap:anywhere;overflow-x:auto}
+  .ad-slot{width:100%!important;max-width:100%!important;margin-left:0!important;margin-right:0!important}
+  .ad-placeholder{min-height:96px!important}
+  .site-footer{width:100%!important;overflow:hidden!important}
+  .footer-grid{grid-template-columns:1fr!important;gap:18px!important}
+  table{display:block!important;width:100%!important;overflow-x:auto!important;-webkit-overflow-scrolling:touch}
+  pre,code{max-width:100%!important;overflow:auto!important;white-space:pre-wrap!important;overflow-wrap:anywhere!important}
+}
+
+@media(max-width:520px){
+  .site-header{padding:9px 10px 10px!important}
+  :root{--ti-mobile-header:92px}
+  .hamburger#hamburgerBtn,.hamburger#toolideaMenuBtn{width:46px!important;min-width:46px!important;height:46px!important;min-height:46px!important}
+  .brand-mark{width:40px!important;height:40px!important;min-width:40px!important}
+  .brand-text strong{font-size:.98rem!important}.brand-text span{display:none!important}
+  .header-search{height:38px!important}
+  .tool-content{padding:12px!important}
+}
+
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}}

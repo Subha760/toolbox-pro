@@ -1,76 +1,54 @@
 const POLICIES = {
   about: `
-    <h2>About Toolbox Pro</h2>
-    <p>Toolbox Pro is an open, client-side utility suite designed for software developers, content creators, researchers, and everyday digital workflows. Our mission is to provide zero-latency, private, and accessible tools without requiring subscriptions or installations.</p>
-    <h3>Architecture & Privacy</h3>
-    <p>Every utility on this website runs locally via native Web APIs (such as the Web Crypto API, HTML5 Canvas, and WebAssembly). Your source files, text strings, and calculations are computed solely within your device's memory space and are never uploaded to any external server.</p>
+    <h2>About Toolinger</h2>
+    <p>Toolinger is a browser-first collection of free utilities for images, PDFs, text, developers, health, finance, conversions and social media. Many tools process inputs locally in the browser so users can work without an account.</p>
+    <p>Some optional third-party libraries or services may be used for specific advanced features. Where a feature depends on an external service, the tool should clearly identify that dependency before processing.</p>
   `,
-
   privacy: `
     <h2>Privacy Policy</h2>
-    <p><strong>Effective Date:</strong> January 1, 2026</p>
-    <p>Toolbox Pro ("we", "our", or "us") respects your digital privacy. This Privacy Policy details how data is handled when you access our tools.</p>
-    
-    <h3>1. Zero Data Collection on Utilities</h3>
-    <p>All processing across our 90+ tools occurs on your client device. Images, strings, scripts, cryptographic keys, and numerical values entered into our toolboxes are not logged, transmitted, or stored on our servers.</p>
-
-    <h3>2. Third-Party Advertising & Google AdSense</h3>
-    <p>This site serves advertisements through Google AdSense and affiliated ad networks. Third-party vendors, including Google, use cookies to serve ads based on your prior visits to our website or other sites on the Internet.</p>
-    <ul>
-      <li>Google's use of advertising cookies enables it and its partners to serve personalized and non-personalized ads to users based on browsing visits.</li>
-      <li>Users may opt out of personalized advertising by visiting <a href="https://adssettings.google.com/" target="_blank" rel="noopener" style="color:var(--cyan);">Google Ad Settings</a> or <a href="https://www.aboutads.info/choices/" target="_blank" rel="noopener" style="color:var(--cyan);">www.aboutads.info</a>.</li>
-    </ul>
-
-    <h3>3. Log Files & Analytics</h3>
-    <p>Like standard web hosts, our static servers automatically record generic server logs (such as browser user-agent, operating system, timestamp, and referring URL) for security monitoring and load balance analysis.</p>
-
-    <h3>4. Contact Us</h3>
-    <p>For privacy inquiries or technical support, email us at: <strong>contact@yourdomain.com</strong></p>
+    <p><strong>Effective date:</strong> August 27, 2026</p>
+    <p>Toolinger aims to minimize collection of user data. For browser-based tools, files and text are processed on the user's device whenever technically practical. Toolinger does not intentionally store uploaded tool inputs on its own application server.</p>
+    <h3>Advertising</h3>
+    <p>Advertising is currently prepared but not enabled in the application. When Monetag or another advertising provider is enabled, that provider may process information such as IP address, browser/device information, advertising identifiers, cookies or similar technologies according to its own policies and applicable law. The live advertising configuration will be added only after the publisher account and ad tags are supplied.</p>
+    <h3>Local storage and preferences</h3>
+    <p>Toolinger may use browser storage for preferences such as consent choices. This is stored by the browser and is not a database of user tool files.</p>
+    <h3>Third-party libraries</h3>
+    <p>Some features load third-party JavaScript libraries or models from content delivery networks. Their operation may involve network requests required to download those assets. Toolinger does not claim that every third-party provider has the same privacy practices as Toolinger.</p>
+    <h3>Contact</h3>
+    <p>Privacy questions: <strong>lootchaser2026@gmail.com</strong></p>
   `,
-
   terms: `
     <h2>Terms of Service</h2>
-    <p><strong>Effective Date:</strong> January 1, 2026</p>
-    <h3>1. Acceptance of Terms</h3>
-    <p>By using Toolbox Pro, you agree to comply with and be bound by these Terms of Service. If you disagree with any part of these terms, you should discontinue use immediately.</p>
-
-    <h3>2. Permitted Use</h3>
-    <p>You may use all calculators, cryptographic converters, formatting utilities, and generation tools for personal, academic, or commercial purposes free of charge.</p>
-
-    <h3>3. Disclaimer of Warranties</h3>
-    <p>All tools are provided "as is" and "as available." While we implement standard mathematical and cryptographic formulas, we make no warranties regarding accuracy, reliability, or suitability for critical financial, legal, or medical applications.</p>
+    <p><strong>Effective date:</strong> August 27, 2026</p>
+    <p>By using Toolinger you agree to use the service lawfully and responsibly. Do not use the tools to infringe copyright, violate privacy, distribute malware, commit fraud, or perform other unlawful activity.</p>
+    <h3>Availability and accuracy</h3>
+    <p>Tools are provided on an "as available" basis. Results should be checked before being used for important financial, medical, legal, employment, identity or other consequential decisions.</p>
+    <h3>Third-party services</h3>
+    <p>Some advanced features may rely on third-party libraries or services. Their separate terms may apply.</p>
+    <h3>Contact</h3>
+    <p><strong>lootchaser2026@gmail.com</strong></p>
   `,
-
   cookies: `
     <h2>Cookie Policy</h2>
-    <p>Cookies are small data files stored on your device that allow websites to function properly and display relevant content.</p>
-    <h3>Types of Cookies We Use</h3>
-    <ul>
-      <li><strong>Essential Cookies:</strong> Used strictly to preserve your selected UI preferences and cookie choices.</li>
-      <li><strong>Advertising Cookies:</strong> Set by Google AdSense and third-party advertising partners to measure ad performance, prevent fraud, and serve customized ads where allowed.</li>
-    </ul>
-    <p>You can configure your browser to reject cookies or prompt you before accepting cookies. Disabling cookies will not affect the client-side execution of our tools.</p>
+    <p>Toolinger may use essential browser storage for preferences and consent. If advertising is enabled, the advertising provider may use cookies or similar technologies for ad delivery, measurement, fraud prevention and personalization where permitted.</p>
+    <p>The current Toolinger build keeps advertising disabled until the publisher's real Monetag configuration is supplied. The consent popup lets visitors choose whether to allow non-essential advertising storage.</p>
+    <p>Browser settings can also be used to delete or block cookies and local storage. Blocking some storage may affect preferences or third-party advertising functionality.</p>
   `,
-
   disclaimer: `
-    <h2>Disclaimer & Earnings Notice</h2>
-    <p><strong>Informational Purposes Only:</strong> Financial calculators (including Loan EMI, ROI, and VAT estimators) and health tools (such as BMI and Calorie calculators) provide theoretical approximations only. They do not constitute certified financial, tax, or medical advice.</p>
-    <p><strong>Advertising Disclosure:</strong> Toolbox Pro is supported by digital advertising. We display advertisements from Google AdSense and may receive financial compensation when visitors interact with ads.</p>
+    <h2>Disclaimer</h2>
+    <p>Toolinger provides general-purpose utilities and does not provide professional medical, financial, tax, legal, immigration or identity-document advice. Health and finance calculations are estimates and should not replace qualified professional advice.</p>
+    <p>For document and image tools, always verify the final output before submitting it to a government, employer, school, bank, platform or other authority.</p>
+    <p>Toolinger may be supported by advertising after the publisher configuration is enabled. Advertising does not change the calculation or processing logic of the tools.</p>
   `,
-
   gdpr: `
-    <h2>GDPR & CCPA / CPRA Notice</h2>
-    <h3>European Users (GDPR)</h3>
-    <p>If you reside in the European Economic Area (EEA) or UK, you are entitled to exercise your data rights (access, erasure, objection, and consent revocation). Non-essential cookies and personalized ad targeting are only enabled upon your consent.</p>
-
-    <h3>California Residents (CCPA/CPRA)</h3>
-    <p>Under the California Consumer Privacy Act, California residents have the right to request disclosure of personal information practices and opt out of the sale or sharing of personal data. We do not sell personal data directly.</p>
+    <h2>Privacy Choices</h2>
+    <p>Where privacy law requires consent, Toolinger provides a choice for non-essential advertising storage. Visitors can select <strong>Necessary only</strong> or allow advertising-related storage through the consent popup.</p>
+    <p>For privacy questions or requests, contact <strong>lootchaser2026@gmail.com</strong>.</p>
   `,
-
   contact: `
     <h2>Contact & Support</h2>
-    <p>Have suggestions for new utilities, found a calculation discrepancy, or have questions regarding ad placement?</p>
-    <p><strong>Email:</strong> contact@yourdomain.com</p>
-    <p><strong>GitHub:</strong> <a href="https://github.com/your-username/toolbox-pro" target="_blank" rel="noopener" style="color:var(--cyan);">github.com/your-username/toolbox-pro</a></p>
+    <p>For bug reports, privacy questions, suggestions or advertising-related questions:</p>
+    <p><strong>Email:</strong> lootchaser2026@gmail.com</p>
+    <p>Please include the tool name, device/browser and a short description of the issue when reporting a technical problem.</p>
   `
 };

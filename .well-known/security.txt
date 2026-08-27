@@ -1,0 +1,3 @@
+Contact: https://github.com/Subha760/toolbox-pro/security/policy
+Policy: https://github.com/Subha760/toolbox-pro/security/policy
+Preferred-Languages: en

@@ -1,1 +1,2 @@
-google.com, pub-XXXXXXXXXXXXXXXX, DIRECT, f08c47fec0942fa0
+# Advertising inventory is intentionally unconfigured until the real Monetag site/ad-channel details are supplied.
+# Do not publish placeholder publisher IDs.
