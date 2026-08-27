@@ -3,6 +3,28 @@
   'use strict';
   function $(id) { return document.getElementById(id); }
 
+  function injectStateStyles() {
+    if ($('tpFixStyles')) return;
+    const style = document.createElement('style');
+    style.id = 'tpFixStyles';
+    style.textContent = `
+      body.landing-mode .app-shell { display: flex !important; }
+      body.landing-mode .app-shell .main { display: none !important; }
+      body:not(.landing-mode) .landing { display: none !important; }
+      body:not(.landing-mode) .site-footer { display: block !important; }
+      body.landing-mode .sidebar { z-index: 1100 !important; }
+      body.drawer-open .tool-drawer-backdrop { display: block !important; }
+      .cookie-banner.show { display: flex !important; visibility: visible !important; opacity: 1 !important; }
+      @media (max-width: 768px) {
+        body.landing-mode .app-shell { min-height: 0 !important; }
+        .cookie-banner { left: 10px !important; right: 10px !important; bottom: 10px !important; max-width: none !important; }
+        .cookie-actions { width: 100%; }
+        .cookie-actions .btn { flex: 1; margin-top: 0; }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
   function setLandingMode() {
     const hash = window.location.hash || '';
     const hasTool = /^#\/[^/]+/.test(hash);
@@ -33,7 +55,7 @@
     const heroQr = $('heroQrBtn');
     const brand = $('brandHome');
 
-    /* app.js owns the actual toggle; this keeps its state accessible and reliable. */
+    /* app.js owns the actual toggle; this synchronizes the final state. */
     if (hamburger) {
       hamburger.addEventListener('click', function () {
         window.setTimeout(function () {
@@ -89,6 +111,7 @@
   }
 
   function boot() {
+    injectStateStyles();
     try { sessionStorage.setItem('tp_ui_build', '2026-08-27-ui2'); } catch (_) {}
     installNavigationGuards();
     refreshPageMode();
