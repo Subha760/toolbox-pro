@@ -48,6 +48,7 @@ ready(()=>{
   backdrop.addEventListener('click',e=>{e.preventDefault();close();});
   document.addEventListener('keydown',e=>{if(e.key==='Escape')close();});
   document.addEventListener('click',e=>{if(e.target.closest('#sidebarContent li'))close();});
+  document.addEventListener('touchend',e=>{if(e.target.closest('#sidebarContent li'))close();});
   window.addEventListener('resize',()=>{if(!isMobile())close();},{passive:true});
   window.__toolingerCloseMenu=close;
   window.__toolingerToggleMenu=toggle;
