@@ -1,0 +1,12 @@
+/* Emergency mobile/landing stabilization */
+.landing-home{display:grid!important;visibility:visible!important;opacity:1!important;color:#f5f4fb!important;z-index:10!important;}
+.landing-home>*{visibility:visible!important;opacity:1!important;}
+.landing-copy,.landing-stage,.landing-metrics,.landing-bottom{position:relative;z-index:20!important;}
+.landing-copy h1,.landing-copy p,.landing-copy .eyebrow,.landing-copy .trust-row,.landing-actions,.landing-metrics,.landing-bottom{visibility:visible!important;opacity:1!important;}
+@media(max-width:900px){
+  body.home-view.drawer-open .app-shell{display:block!important;position:fixed!important;inset:0!important;width:100%!important;height:100dvh!important;z-index:1200!important;pointer-events:none!important;background:transparent!important;}
+  body.home-view.drawer-open .sidebar{display:block!important;pointer-events:auto!important;}
+  .sidebar,.sidebar.open{background:#0b0d20!important;background-color:#0b0d20!important;background-image:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;filter:none!important;opacity:1!important;isolation:isolate!important;z-index:1201!important;}
+  #toolingerBackdrop{position:fixed!important;inset:0!important;background:rgba(4,6,18,.72)!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;z-index:1200!important;}
+  body.drawer-open .sidebar{box-shadow:18px 0 50px rgba(0,0,0,.55)!important;}
+}
