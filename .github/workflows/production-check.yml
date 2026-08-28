@@ -1,7 +1,7 @@
 name: Production readiness check
 on:
   push:
-    branches: [main, production-readiness]
+    branches: [main]
   pull_request:
     branches: [main]
 permissions:
@@ -12,19 +12,21 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Verify production files
+      - name: Verify clean production structure
         shell: bash
         run: |
           set -euo pipefail
-          for f in index.html app.js policies.js styles.css Style.css site.js ads.txt robots.txt SECURITY.md; do test -f "$f"; done
-          grep -q 'id="hamburgerBtn"' index.html
-          grep -q 'id="sidebar"' index.html
-          grep -q 'id="toolContainer"' index.html
+          for f in index.html app.js boot.js policies.js styles.css ads.txt robots.txt SECURITY.md toolinger-logo.svg; do test -f "$f"; done
+          test ! -e Index.html
+          test ! -e Style.css
+          test ! -e fix.css
+          test ! -e polish.css
+          test ! -e site.js
           grep -q 'src="app.js?v=' index.html
-          grep -q 'src="site.js?v=' index.html
+          grep -q 'src="boot.js?v=' index.html
           grep -q 'href="styles.css?v=' index.html
-          echo 'Required production files and references are present.'
-      - name: Check for placeholder ad credentials
+          echo 'Clean production files and references are present.'
+      - name: Check advertising placeholders
         shell: bash
         run: |
           set -euo pipefail
@@ -32,28 +34,28 @@ jobs:
             echo 'ERROR: placeholder advertising credentials are present.'
             exit 1
           fi
-          echo 'No advertising credential placeholders found.'
       - name: Check JavaScript syntax
         shell: bash
         run: |
           set -euo pipefail
           node --check app.js
-          node --check site.js
+          node --check boot.js
           node --check policies.js
-      - name: Check HTML structure
+      - name: Check HTML structure and asset references
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
           from html.parser import HTMLParser
           from pathlib import Path
-          class Parser(HTMLParser):
-              pass
           html=Path('index.html').read_text(encoding='utf-8')
-          Parser().feed(html)
-          for element in ('hamburgerBtn','sidebar','sidebarContent','toolTitle','toolDesc','toolContainer','cookieBanner','modalOverlay'):
+          Parser=HTMLParser(); Parser.feed(html)
+          required=('hamburgerBtn','sidebar','sidebarContent','toolTitle','toolDesc','toolContainer','cookieBanner','modalOverlay','landingHome','drawerBackdrop')
+          for element in required:
               assert f'id="{element}"' in html, f'missing {element}'
+          for asset in ('styles.css','policies.js','app.js','boot.js','toolinger-logo.svg'):
+              assert asset in html, f'missing asset reference {asset}'
           assert html.count('id="hamburgerBtn"') == 1
           assert html.count('id="sidebar"') == 1
-          print('index.html parsed and required application IDs are unique.')
+          print('index.html parsed and required IDs/assets are present.')
           PY
