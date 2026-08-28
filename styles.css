@@ -1,7 +1,7 @@
 @import url('./Style.css');
 
-/* TOOLINGER SINGLE FRONTEND LAYER */
 * { box-sizing: border-box; }
+
 body {
   background: radial-gradient(900px 520px at 8% -10%, rgba(108,92,231,.34), transparent 62%), 
               radial-gradient(700px 520px at 105% 20%, rgba(34,211,238,.16), transparent 58%), 
@@ -13,7 +13,6 @@ body {
   overflow-x: hidden;
   margin: 0;
   padding: 0;
-  min-height: 100vh;
 }
 
 .site-header {
@@ -29,6 +28,7 @@ body {
   -webkit-backdrop-filter: blur(20px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   width: 100%;
+  flex-shrink: 0;
 }
 
 .brand {
@@ -118,17 +118,9 @@ body {
   margin: 3px 0;
 }
 
-.hamburger.is-open span:nth-child(1) {
-  transform: rotate(45deg) translate(10px, 10px);
-}
-
-.hamburger.is-open span:nth-child(2) {
-  opacity: 0;
-}
-
-.hamburger.is-open span:nth-child(3) {
-  transform: rotate(-45deg) translate(7px, -7px);
-}
+.hamburger.is-open span:nth-child(1) { transform: rotate(45deg) translate(10px, 10px); }
+.hamburger.is-open span:nth-child(2) { opacity: 0; }
+.hamburger.is-open span:nth-child(3) { transform: rotate(-45deg) translate(7px, -7px); }
 
 .header-nav {
   display: flex;
@@ -243,18 +235,8 @@ button[data-modal]:hover {
   animation: spinRing 15s linear infinite;
 }
 
-.stage-ring:nth-child(1) {
-  width: 220px;
-  height: 220px;
-  animation-duration: 20s;
-}
-
-.stage-ring:nth-child(2) {
-  width: 350px;
-  height: 350px;
-  animation-duration: 30s;
-  opacity: 0.5;
-}
+.stage-ring:nth-child(1) { width: 220px; height: 220px; animation-duration: 20s; }
+.stage-ring:nth-child(2) { width: 350px; height: 350px; animation-duration: 30s; opacity: 0.5; }
 
 .stage-core {
   position: relative;
@@ -283,17 +265,8 @@ button[data-modal]:hover {
   animation: chipFloat 3s ease-in-out infinite;
 }
 
-.stage-chip:nth-child(2) {
-  top: 80px;
-  left: 60px;
-  animation-delay: -0.5s;
-}
-
-.stage-chip:nth-child(3) {
-  bottom: 100px;
-  right: 40px;
-  animation-delay: -1s;
-}
+.stage-chip:nth-child(2) { top: 80px; left: 60px; animation-delay: -0.5s; }
+.stage-chip:nth-child(3) { bottom: 100px; right: 40px; animation-delay: -1s; }
 
 .stage-spark {
   position: absolute;
@@ -305,16 +278,8 @@ button[data-modal]:hover {
   animation: sparkPulse 2s ease-in-out infinite;
 }
 
-.stage-spark:nth-child(4) {
-  top: 120px;
-  right: 100px;
-}
-
-.stage-spark:nth-child(5) {
-  bottom: 200px;
-  left: 80px;
-  animation-delay: -0.6s;
-}
+.stage-spark:nth-child(4) { top: 120px; right: 100px; }
+.stage-spark:nth-child(5) { bottom: 200px; left: 80px; animation-delay: -0.6s; }
 
 .landing-metrics {
   position: absolute;
@@ -326,38 +291,14 @@ button[data-modal]:hover {
   justify-content: center;
 }
 
-.landing-metrics > div {
-  text-align: center;
-}
+.landing-metrics > div { text-align: center; }
+.landing-metrics strong { display: block; font-size: 1.8rem; font-weight: 700; margin-bottom: 4px; }
+.landing-metrics span { font-size: 0.85rem; color: #7c6ca8; }
 
-.landing-metrics strong {
-  display: block;
-  font-size: 1.8rem;
-  font-weight: 700;
-  margin-bottom: 4px;
-}
-
-.landing-metrics span {
-  font-size: 0.85rem;
-  color: #7c6ca8;
-}
-
-@keyframes spinRing {
-  to { transform: rotate(360deg); }
-}
-
-@keyframes coreFloat {
-  50% { transform: perspective(1000px) rotateY(5deg) rotateX(-2deg) translateY(-10px); }
-}
-
-@keyframes chipFloat {
-  50% { transform: translateY(-15px) scale(1.05); }
-}
-
-@keyframes sparkPulse {
-  0%, 100% { opacity: 0.3; transform: scale(0.8); }
-  50% { opacity: 1; transform: scale(1.2); }
-}
+@keyframes spinRing { to { transform: rotate(360deg); } }
+@keyframes coreFloat { 50% { transform: perspective(1000px) rotateY(5deg) rotateX(-2deg) translateY(-10px); } }
+@keyframes chipFloat { 50% { transform: translateY(-15px) scale(1.05); } }
+@keyframes sparkPulse { 0%, 100% { opacity: 0.3; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.2); } }
 
 /* Tool shell */
 .app-shell {
@@ -366,6 +307,7 @@ button[data-modal]:hover {
   display: none;
   flex-direction: row;
   width: 100%;
+  height: calc(100vh - 72px);
 }
 
 .home-view .app-shell {
@@ -386,33 +328,27 @@ button[data-modal]:hover {
 }
 
 .sidebar {
-  z-index: 1350;
+  display: none;
   position: relative;
+  width: 280px;
   background: rgba(15, 7, 32, 0.7);
   backdrop-filter: blur(12px);
   border-right: 1px solid rgba(255, 255, 255, 0.08);
-  max-height: calc(100vh - 72px);
+  height: 100%;
   overflow-y: auto;
-  min-width: 280px;
   flex-shrink: 0;
+  z-index: 1350;
 }
 
 .sidebar.open {
-  position: fixed;
-  inset: 72px 0 0 0;
-  max-height: calc(100vh - 72px);
-  width: 100%;
-  right: auto;
-  left: 0;
-  border-right: none;
-  min-width: auto;
+  display: block;
 }
 
 .main {
   flex: 1;
-  min-height: calc(100vh - 72px);
   display: flex;
   flex-direction: column;
+  height: 100%;
   overflow: hidden;
 }
 
@@ -485,7 +421,7 @@ button[data-modal]:hover {
 .tool-content textarea {
   resize: vertical;
   min-height: 120px;
-  font-family: JetBrains Mono, monospace;
+  font-family: 'JetBrains Mono', monospace;
 }
 
 .tool-content .row {
@@ -764,12 +700,8 @@ button[data-modal]:hover {
   background: rgba(255, 255, 255, 0.2);
 }
 
+/* Mobile first */
 @media (max-width: 900px) {
-  .site-header {
-    padding: 10px 12px;
-    gap: 9px;
-  }
-
   .hamburger {
     display: flex;
   }
@@ -778,57 +710,16 @@ button[data-modal]:hover {
     display: none;
   }
 
-  .brand-mark {
-    width: 42px;
-    height: 42px;
-  }
-
-  .brand-text strong {
-    font-size: 1.02rem;
-  }
-
-  .header-search {
-    max-width: none;
-    flex: 1;
-  }
-
-  .ad-slot {
-    margin: 12px;
-    padding: 40px 16px;
-  }
-
-  .app-shell {
-    flex-direction: column;
-  }
-
   .sidebar {
-    display: none;
-    width: 100%;
-    min-width: auto;
     position: fixed;
     inset: 72px 0 0 0;
-    max-height: calc(100vh - 72px);
+    width: 100%;
+    height: calc(100vh - 72px);
     border-right: none;
   }
 
-  .sidebar.open {
-    display: block;
-  }
-
-  .main {
-    min-height: calc(100vh - 130px);
-  }
-
-  .tool-header {
-    padding: 16px;
-  }
-
-  .tool-title {
-    font-size: 1.4rem;
-  }
-
-  .tool-content {
-    padding: 16px;
+  .sidebar:not(.open) {
+    display: none;
   }
 
   .landing-home {
@@ -846,25 +737,53 @@ button[data-modal]:hover {
     gap: 16px;
   }
 
-  .landing-metrics > div {
-    min-width: 80px;
-  }
-}
-
-@media (max-width: 600px) {
-  .landing-home {
-    grid-template-columns: 1fr;
-    gap: 20px;
-    padding: 32px 16px 60px;
+  .site-header {
+    padding: 10px 12px;
+    gap: 9px;
   }
 
-  .landing-stage {
-    height: 340px;
-    margin-top: 20px;
+  .brand-text strong {
+    font-size: 1.02rem;
+  }
+
+  .header-search {
+    max-width: none;
+    flex: 1;
+  }
+
+  .tool-header {
+    padding: 16px;
+  }
+
+  .tool-title {
+    font-size: 1.4rem;
+  }
+
+  .tool-content {
+    padding: 16px;
   }
 }
 
 @media (max-width: 430px) {
+  .hamburger {
+    width: 40px;
+    height: 40px;
+  }
+
+  .brand-mark {
+    width: 36px;
+    height: 36px;
+  }
+
+  .brand-text {
+    display: none;
+  }
+
+  .header-search {
+    font-size: 0.85rem;
+    padding: 8px 12px;
+  }
+
   .landing-home {
     padding-left: 13px;
     padding-right: 13px;
@@ -887,29 +806,6 @@ button[data-modal]:hover {
     border-width: 0.5px;
   }
 
-  .site-header {
-    padding: 8px 10px;
-  }
-
-  .hamburger {
-    width: 40px;
-    height: 40px;
-  }
-
-  .brand-mark {
-    width: 36px;
-    height: 36px;
-  }
-
-  .brand-text {
-    display: none;
-  }
-
-  .header-search {
-    font-size: 0.85rem;
-    padding: 8px 12px;
-  }
-
   .tool-header {
     padding: 12px;
   }
@@ -925,10 +821,6 @@ button[data-modal]:hover {
 
   .tool-content .row {
     gap: 8px;
-  }
-
-  .sidebar.open {
-    width: 100%;
   }
 
   .modal-box {
@@ -953,26 +845,24 @@ button[data-modal]:hover {
 }
 
 @media (min-width: 901px) {
-  .sidebar {
-    position: sticky;
-    top: 72px;
-    display: block !important;
-  }
-
   .hamburger {
     display: none;
   }
 
-  .landing-home {
-    padding-top: 60px;
+  .sidebar {
+    display: block !important;
+    position: sticky;
+    top: 72px;
+    width: 280px;
+    height: auto;
   }
 
-  .tool-view .sidebar {
+  .sidebar.open {
     display: block;
   }
 
-  .tool-view .main {
-    min-width: 0;
+  .landing-home {
+    padding-top: 60px;
   }
 
   .app-shell {
