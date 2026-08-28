@@ -1,1 +1,72 @@
-<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Toolinger</title><script>location.replace('./index.html'+location.search+location.hash)</script><noscript><meta http-equiv="refresh" content="0;url=./index.html"></noscript>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#6c5ce7">
+<meta name="description" content="Toolinger — 90+ beautiful, fast, browser-based tools for everyday digital work.">
+<title>Toolinger — 90+ Free Online Tools</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css?v=20260828-6">
+<link rel="stylesheet" href="polish.css?v=20260828-6">
+<link rel="stylesheet" href="fix.css?v=20260828-6">
+<style>
+/* FINAL self-contained mobile drawer + landing safety layer */
+#landingHome{display:grid!important;visibility:visible!important;opacity:1!important;min-height:calc(100svh - 128px);position:relative;z-index:10}
+#landingHome[hidden]{display:grid!important}
+#landingHome .landing-copy,#landingHome .landing-stage,#landingHome .landing-metrics,#landingHome .landing-bottom{visibility:visible!important;opacity:1!important}
+@media(max-width:900px){
+ body.home-view{overflow-x:hidden}
+ body.home-view .app-shell{display:flex!important;position:relative!important;height:0!important;min-height:0!important;z-index:2000!important}
+ body.home-view .app-shell .main{display:none!important}
+ body.home-view .sidebar{display:block!important;position:fixed!important;left:0!important;top:0!important;width:min(88vw,340px)!important;height:100dvh!important;max-height:none!important;padding:76px 0 24px!important;transform:translate3d(-110%,0,0)!important;visibility:hidden!important;opacity:1!important;background:#090b18!important;background-color:#090b18!important;background-image:linear-gradient(180deg,#151938 0%,#0d1026 50%,#090b18 100%)!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;filter:none!important;transition:transform .3s ease,visibility 0s linear .3s!important;z-index:3002!important;pointer-events:none!important;overflow-y:auto!important;box-shadow:none!important}
+ body.home-view .sidebar.open{transform:translate3d(0,0,0)!important;visibility:visible!important;pointer-events:auto!important;transition:transform .3s ease,visibility 0s!important;box-shadow:18px 0 50px rgba(0,0,0,.6)!important}
+ body.home-view .sidebar *{filter:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;opacity:1!important}
+ body.home-view .sidebar ul li{min-height:48px!important;padding:12px 16px!important;touch-action:manipulation!important}
+ #toolingerBackdrop{position:fixed!important;inset:0!important;display:block!important;opacity:0!important;visibility:hidden!important;pointer-events:none!important;background:rgba(2,4,12,.78)!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;z-index:3001!important}
+ #toolingerBackdrop.show{opacity:1!important;visibility:visible!important;pointer-events:auto!important}
+ .site-header{z-index:4000!important;display:grid!important;grid-template-columns:48px minmax(0,1fr);grid-template-rows:48px 44px!important;gap:8px 10px!important;padding:10px!important}
+ .hamburger{display:flex!important;grid-column:1;grid-row:1;width:48px!important;height:48px!important;touch-action:manipulation!important}
+ .brand{grid-column:2;grid-row:1;min-width:0!important}
+ .header-search{grid-column:1/-1;grid-row:2;width:100%!important;max-width:none!important;margin:0!important;height:44px!important}
+ .header-search input{font-size:16px!important;min-width:0!important}
+ .landing-home{padding:26px 12px 68px!important;grid-template-columns:1fr!important;gap:12px!important;overflow:hidden!important}
+ .landing-copy{text-align:center!important}
+ .landing-copy h1{font-size:clamp(2.25rem,11vw,3.4rem)!important}
+ .landing-copy p{margin-left:auto!important;margin-right:auto!important}
+ .landing-actions{justify-content:center!important}
+ .landing-stage{height:285px!important;min-height:285px!important}
+ .landing-metrics{position:relative!important;left:auto!important;bottom:auto!important}
+ .tool-content{padding:12px 10px!important}
+ .tool-content input,.tool-content select,.tool-content textarea{font-size:16px!important}
+}
+</style>
+<script>window.__TOOLINGER_INITIAL_HASH=location.hash||'';</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+<div class="orb orb-1"></div><div class="orb orb-2"></div>
+<header class="site-header" id="siteHeader">
+<button class="hamburger" id="hamburgerBtn" aria-label="Open tools" aria-expanded="false" type="button"><span></span><span></span><span></span></button>
+<a class="brand" href="#/" aria-label="Toolinger home"><span class="brand-mark"><img src="https://cdn.phototourl.com/free/2026-08-27-01bf5c9c-8880-4db1-87f7-c3b75410505f.png" alt="Toolinger"></span><span class="brand-text"><strong>Toolinger</strong><small>90+ ONLINE TOOLS</small></span></a>
+<label class="header-search"><span>⌕</span><input id="toolSearch" type="search" autocomplete="off" placeholder="Search 90+ tools…" aria-label="Search tools"></label>
+<nav class="header-nav"><button data-modal="about" type="button">About</button><button data-modal="privacy" type="button">Privacy</button><button data-modal="terms" type="button">Terms</button><button data-modal="contact" type="button">Contact</button></nav>
+</header>
+<div class="ad-slot ad-leaderboard"><span class="ad-label">ADVERTISEMENT</span><div class="ad-placeholder"><span>MoneyTag / Monetag space</span></div></div>
+<section id="landingHome" class="landing-home">
+<canvas id="heroParticles" class="hero-particles" aria-hidden="true"></canvas><div class="landing-glow glow-a"></div><div class="landing-glow glow-b"></div>
+<div class="landing-copy"><span class="eyebrow">✦ 90+ TOOLS · FAST · PRIVATE · FREE</span><h1>Everything useful.<br><span>In one beautiful place.</span></h1><p>Convert, calculate, create, format, secure and organize everyday digital work directly in your browser.</p><div class="landing-actions"><button class="btn" id="exploreToolsBtn" type="button">☰ Explore all tools</button><button class="btn btn-secondary" id="popularToolBtn" type="button">✦ Try QR Generator</button></div><div class="trust-row"><span>⚡ Instant</span><span>🔒 Browser-first</span><span>📱 Mobile ready</span><span>🚫 No signup</span></div></div>
+<div class="landing-stage" aria-hidden="true"><div class="stage-ring ring-one"></div><div class="stage-ring ring-two"></div><div class="stage-spark spark-a"></div><div class="stage-spark spark-b"></div><div class="stage-core"><div class="core-top"><i></i><i></i><i></i><b>TOOLINGER / LIVE</b></div><div class="core-title">90+ tools<br><em>ready for you</em></div><div class="core-grid"><span>🖼️ Images</span><span>📝 Text</span><span>🔐 Security</span><span>💻 Developer</span><span>🔢 Math</span><span>📐 Convert</span></div><div class="core-scan"></div></div><div class="float-chip chip-one">⚡ Instant</div><div class="float-chip chip-two">🔐 Private</div><div class="float-chip chip-three">✦ 90+ tools</div></div>
+<div class="landing-metrics"><div><strong>90+</strong><span>useful tools</span></div><div><strong>0</strong><span>accounts needed</span></div><div><strong>∞</strong><span>free local use</span></div></div><div class="landing-bottom"><span>Built for phones first</span><span>•</span><span>No account required</span><span>•</span><span>Keep your files on your device</span></div>
+</section>
+<div class="app-shell" id="appShell"><nav class="sidebar" id="sidebar" aria-label="Tool categories"><div id="sidebarContent"></div></nav><main class="main" id="mainContent"><div class="tool-header" id="toolHeader"><h1 id="toolTitle">Loading Tool…</h1><p id="toolDesc"></p></div><div class="tool-content" id="toolContainer"></div><div class="ad-slot ad-incontent"><span class="ad-label">ADVERTISEMENT</span><div class="ad-placeholder"><span>MoneyTag / Monetag space</span></div></div></main></div>
+<div class="ad-slot ad-footer"><span class="ad-label">ADVERTISEMENT</span><div class="ad-placeholder"><span>MoneyTag / Monetag space</span></div></div>
+<footer class="site-footer"><div class="footer-grid"><div class="footer-col"><div class="brand"><span class="brand-mark"><img src="https://cdn.phototourl.com/free/2026-08-27-01bf5c9c-8880-4db1-87f7-c3b75410505f.png" alt="Toolinger"></span><strong>Toolinger</strong></div><p>Fast browser-based utilities for everyday digital work.</p></div><div class="footer-col"><h4>Navigation</h4><ul id="footerCategoryList"></ul></div><div class="footer-col"><h4>Company</h4><ul><li><button data-modal="about" type="button">About</button></li><li><button data-modal="privacy" type="button">Privacy</button></li><li><button data-modal="terms" type="button">Terms</button></li><li><button data-modal="cookies" type="button">Cookies</button></li></ul></div><div class="footer-col"><h4>Support</h4><ul><li><button data-modal="contact" type="button">Contact</button></li><li><button data-modal="disclaimer" type="button">Disclaimer</button></li><li><button data-modal="gdpr" type="button">Privacy choices</button></li></ul></div></div><div class="footer-bottom"><span>© <span id="yearNow"></span> Toolinger</span><span>Browser-first processing where supported.</span></div></footer>
+<div class="cookie-banner" id="cookieBanner" role="dialog" aria-label="Privacy and advertising choices"><div class="cookie-icon">🍪</div><div class="cookie-copy"><strong>Privacy & advertising choices</strong><p>Choose how Toolinger may use non-essential storage for future advertising. Your choice stays on this device.</p></div><div class="cookie-actions"><button class="btn" id="cookieAcceptBtn" type="button">Accept All</button><button class="btn btn-secondary" id="cookieDeclineBtn" type="button">Necessary Only</button><button class="cookie-policy" data-modal="cookies" type="button">Privacy details</button></div></div>
+<div class="modal-overlay" id="modalOverlay"><div class="modal-box" id="modalBox"></div></div>
+<script src="policies.js"></script><script src="app.js?v=20260828-6"></script><script src="site.js?v=20260828-6"></script>
+</body></html>
