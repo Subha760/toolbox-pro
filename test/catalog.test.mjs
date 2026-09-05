@@ -13,4 +13,4 @@ test("every configured engine is rendered", () => {
   for (const engine of new Set(tools.map((tool) => tool.engine))) assert.match(source, new RegExp(`case ["']${engine}["']`), `missing renderer for ${engine}`);
 });
 test("local AI catalogue is wired", () => assert.equal(tools.filter(({ category }) => category === "ai").length, 4));
-test("production entry mounts React", () => { assert.match(index, /id="root"/); assert.match(index, /src="\/main\.jsx"/); });
+test("production entry mounts React", () => { assert.match(index, /id="root"/); assert.match(index, /src="\.\/main\.jsx"/); });

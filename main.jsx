@@ -5,4 +5,4 @@ import "./styles.css";
 import "./src/tailwind.css";
 
 createRoot(document.getElementById("root")).render(<React.StrictMode><App /></React.StrictMode>);
-if ("serviceWorker" in navigator && import.meta.env.PROD) window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js"));
+if ("serviceWorker" in navigator && import.meta.env.PROD) window.addEventListener("load", () => navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`));
