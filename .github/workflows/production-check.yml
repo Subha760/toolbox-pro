@@ -7,55 +7,19 @@ on:
 permissions:
   contents: read
 jobs:
-  static-check:
+  build-and-test:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Verify clean production structure
-        shell: bash
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+      - run: npm run check
+      - name: Verify advertising configuration
         run: |
-          set -euo pipefail
-          for f in index.html app.js boot.js policies.js styles.css ads.txt robots.txt SECURITY.md toolinger-logo.svg; do test -f "$f"; done
-          test ! -e Index.html
-          test ! -e Style.css
-          test ! -e fix.css
-          test ! -e polish.css
-          test ! -e site.js
-          grep -q 'src="app.js?v=' index.html
-          grep -q 'src="boot.js?v=' index.html
-          grep -q 'href="styles.css?v=' index.html
-          echo 'Clean production files and references are present.'
-      - name: Check advertising placeholders
-        shell: bash
-        run: |
-          set -euo pipefail
-          if grep -RIn --exclude-dir=.git --exclude='production-check.yml' 'pub-XXXXXXXXXXXXXXXX\|ca-pub-XXXXXXXXXXXXXXXX' .; then
-            echo 'ERROR: placeholder advertising credentials are present.'
-            exit 1
-          fi
-      - name: Check JavaScript syntax
-        shell: bash
-        run: |
-          set -euo pipefail
-          node --check app.js
-          node --check boot.js
-          node --check policies.js
-      - name: Check HTML structure and asset references
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          from html.parser import HTMLParser
-          from pathlib import Path
-          html=Path('index.html').read_text(encoding='utf-8')
-          Parser=HTMLParser(); Parser.feed(html)
-          required=('hamburgerBtn','sidebar','sidebarContent','toolTitle','toolDesc','toolContainer','cookieBanner','modalOverlay','landingHome','drawerBackdrop')
-          for element in required:
-              assert f'id="{element}"' in html, f'missing {element}'
-          for asset in ('styles.css','policies.js','app.js','boot.js','toolinger-logo.svg'):
-              assert asset in html, f'missing asset reference {asset}'
-          assert html.count('id="hamburgerBtn"') == 1
-          assert html.count('id="sidebar"') == 1
-          print('index.html parsed and required IDs/assets are present.')
-          PY
+          if grep -RIn --exclude-dir=.git --exclude-dir=node_modules --exclude=production-check.yml 'pub-XXXXXXXXXXXXXXXX\|ca-pub-XXXXXXXXXXXXXXXX' .; then exit 1; fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: toolinger-dist
+          path: dist
