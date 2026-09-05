@@ -18,7 +18,7 @@ jobs:
       - run: npm run check
       - name: Verify advertising configuration
         run: |
-          if grep -RIn --exclude-dir=.git --exclude-dir=node_modules 'pub-XXXXXXXXXXXXXXXX\|ca-pub-XXXXXXXXXXXXXXXX' .; then exit 1; fi
+          if grep -RIn --exclude-dir=.git --exclude-dir=node_modules --exclude=production-check.yml 'pub-XXXXXXXXXXXXXXXX\|ca-pub-XXXXXXXXXXXXXXXX' .; then exit 1; fi
       - uses: actions/upload-artifact@v4
         with:
           name: toolinger-dist
