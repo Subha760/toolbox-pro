@@ -15,6 +15,7 @@ type CategoryId =
   | "facebook"
   | "instagram"
   | "youtube"
+  | "ai"
   | "utility";
 
 type ToolEngine =
@@ -45,7 +46,8 @@ type ToolEngine =
   | "image"
   | "passport"
   | "pdf"
-  | "social";
+  | "social"
+  | "local-ai";
 
 type ToolConfig = {
   id: string;
@@ -76,6 +78,7 @@ const CATEGORY_LABELS: Record<CategoryId, string> = {
   facebook: "Facebook Tools",
   instagram: "Instagram Tools",
   youtube: "YouTube Tools",
+  ai: "Local AI Tools",
   utility: "Utility Tools",
 };
 
@@ -209,6 +212,11 @@ const TOOL_LIST: ToolConfig[] = [
   { id: "youtube-thumbnail-dimensions", name: "Thumbnail Dimension Helper", category: "youtube", description: "Thumbnail size references.", keywords: ["thumbnail"], engine: "social", mode: "dimensions" },
   { id: "youtube-timestamp-generator", name: "Timestamp Generator", category: "youtube", description: "Generate chapter timestamps.", keywords: ["timestamp"], engine: "social", mode: "yt-timestamps" },
   { id: "youtube-template-generator", name: "Video Description Template Generator", category: "youtube", description: "Create repeatable templates.", keywords: ["template"], engine: "social", mode: "yt-template" },
+
+  { id: "ai-sentiment", name: "AI Sentiment Analyzer", category: "ai", description: "Detect positive or negative tone with a private on-device model.", keywords: ["ai", "sentiment", "tone"], engine: "local-ai", mode: "sentiment" },
+  { id: "ai-semantic-similarity", name: "AI Semantic Similarity", category: "ai", description: "Compare the meaning of two passages locally.", keywords: ["ai", "semantic", "similarity"], engine: "local-ai", mode: "similarity" },
+  { id: "ai-extractive-summary", name: "AI Extractive Summarizer", category: "ai", description: "Select the most meaningful sentences without uploading your text.", keywords: ["ai", "summary", "summarize"], engine: "local-ai", mode: "summary" },
+  { id: "ai-keyword-extractor", name: "AI Keyword Extractor", category: "ai", description: "Find semantically important keywords using local embeddings.", keywords: ["ai", "keyword", "seo"], engine: "local-ai", mode: "keywords" },
 
   { id: "coin-flip", name: "Coin Flip", category: "utility", description: "Animated 3D coin flip with sound.", keywords: ["coin", "flip"], engine: "coin" },
   { id: "random-number-generator", name: "Random Number Generator", category: "utility", description: "Generate random numbers in range.", keywords: ["random", "number"], engine: "simple-calculator", mode: "random-number" },
@@ -3029,6 +3037,87 @@ function PassportTool() {
   );
 }
 
+const localAiPipelines = new Map<string, Promise<any>>();
+
+function getLocalAiPipeline(task: string, model: string) {
+  const key = `${task}:${model}`;
+  if (!localAiPipelines.has(key)) {
+    localAiPipelines.set(key, import("@huggingface/transformers").then(({ pipeline, env }) => {
+      env.allowLocalModels = false;
+      env.useBrowserCache = true;
+      return pipeline(task as any, model, { dtype: "q8" });
+    }));
+  }
+  return localAiPipelines.get(key)!;
+}
+
+function cosine(a: ArrayLike<number>, b: ArrayLike<number>) {
+  let dot = 0, aa = 0, bb = 0;
+  for (let i = 0; i < Math.min(a.length, b.length); i += 1) { dot += a[i] * b[i]; aa += a[i] ** 2; bb += b[i] ** 2; }
+  return dot / (Math.sqrt(aa) * Math.sqrt(bb) || 1);
+}
+
+function rowsFromTensor(tensor: any): number[][] {
+  const data = Array.from(tensor.data as ArrayLike<number>);
+  const rows = tensor.dims?.[0] || 1;
+  const width = data.length / rows;
+  return Array.from({ length: rows }, (_, row) => data.slice(row * width, (row + 1) * width));
+}
+
+function LocalAiTool({ mode }: { mode: string }) {
+  const [text, setText] = useState("");
+  const [second, setSecond] = useState("");
+  const [result, setResult] = useState("Your result will appear here.");
+  const [busy, setBusy] = useState(false);
+
+  const run = async () => {
+    if (!text.trim()) { setResult("Enter some text first."); return; }
+    setBusy(true);
+    setResult("Loading the compact model on this device. The first run may take a minute; later runs use the browser cache.");
+    try {
+      if (mode === "sentiment") {
+        const classifier = await getLocalAiPipeline("sentiment-analysis", "Xenova/distilbert-base-uncased-finetuned-sst-2-english");
+        const output = await classifier(text.slice(0, 4000));
+        const best = Array.isArray(output) ? output[0] : output;
+        setResult(`${String(best.label).replace("POSITIVE", "Positive").replace("NEGATIVE", "Negative")} · ${(best.score * 100).toFixed(1)}% confidence`);
+      } else {
+        const embed = await getLocalAiPipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2");
+        if (mode === "similarity") {
+          if (!second.trim()) throw new Error("Enter both passages.");
+          const vectors = rowsFromTensor(await embed([text, second], { pooling: "mean", normalize: true }));
+          setResult(`Semantic similarity: ${(Math.max(0, cosine(vectors[0], vectors[1])) * 100).toFixed(1)}%`);
+        } else if (mode === "summary") {
+          const sentences = text.match(/[^.!?]+[.!?]+|[^.!?]+$/g)?.map((item) => item.trim()).filter(Boolean) ?? [];
+          if (sentences.length < 2) throw new Error("Enter at least two sentences.");
+          const vectors = rowsFromTensor(await embed(sentences.slice(0, 40), { pooling: "mean", normalize: true }));
+          const centroid = vectors[0].map((_, col) => vectors.reduce((sum, row) => sum + row[col], 0) / vectors.length);
+          const keep = Math.max(1, Math.ceil(vectors.length * 0.3));
+          const chosen = vectors.map((row, index) => ({ index, score: cosine(row, centroid) })).sort((a, b) => b.score - a.score).slice(0, keep).sort((a, b) => a.index - b.index);
+          setResult(chosen.map(({ index }) => sentences[index]).join(" "));
+        } else {
+          const words = text.toLowerCase().match(/[a-z][a-z-]{3,}/g) ?? [];
+          const stop = new Set(["this", "that", "with", "from", "have", "will", "your", "about", "there", "their", "what", "when", "where", "which", "would", "could", "should", "into", "than", "then", "they", "them", "were", "been", "being"]);
+          const candidates = [...new Set(words.filter((word) => !stop.has(word)))].slice(0, 35);
+          if (!candidates.length) throw new Error("Enter a longer English passage.");
+          const vectors = rowsFromTensor(await embed([text.slice(0, 4000), ...candidates], { pooling: "mean", normalize: true }));
+          const ranked = candidates.map((word, index) => ({ word, score: cosine(vectors[0], vectors[index + 1]) })).sort((a, b) => b.score - a.score).slice(0, 10);
+          setResult(ranked.map(({ word }) => word).join(", "));
+        }
+      }
+    } catch (error) {
+      setResult(error instanceof Error ? error.message : "The local model could not run in this browser.");
+    } finally { setBusy(false); }
+  };
+
+  return <ToolPanel title="Private on-device AI">
+    <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">Your text stays in this browser. The model downloads once and is cached locally. No API key or account is needed.</div>
+    <textarea className={`${inputClass} min-h-44`} value={text} onChange={(event) => setText(event.target.value)} placeholder={mode === "similarity" ? "First passage" : "Paste text"} />
+    {mode === "similarity" ? <textarea className={`${inputClass} min-h-32`} value={second} onChange={(event) => setSecond(event.target.value)} placeholder="Second passage" /> : null}
+    <button type="button" className={primaryBtn} onClick={run} disabled={busy}>{busy ? "Running locally…" : "Run local AI"}</button>
+    <div className={`${resultBox} whitespace-pre-wrap`} aria-live="polite">{result}</div>
+  </ToolPanel>;
+}
+
 function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -3044,6 +3133,7 @@ function App() {
     facebook: false,
     instagram: false,
     youtube: false,
+    ai: false,
     utility: false,
   });
   const [activeToolId, setActiveToolId] = useState("qr-code-generator");
@@ -3059,7 +3149,7 @@ function App() {
   const workspaceRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
-    document.title = "Toolinger - 90+ Free Online Tools";
+    document.title = "Toolinger - 120+ Free Online Tools";
     (window as Window & { TOOLINGER_CONFIG?: typeof TOOLINGER_CONFIG }).TOOLINGER_CONFIG = TOOLINGER_CONFIG;
   }, []);
 
@@ -3184,6 +3274,8 @@ function App() {
         return <PdfTool mode={activeTool.mode ?? "merge"} />;
       case "social":
         return <SocialTool mode={activeTool.mode ?? "caption"} />;
+      case "local-ai":
+        return <LocalAiTool mode={activeTool.mode ?? "sentiment"} />;
       default:
         return null;
     }
@@ -3287,7 +3379,7 @@ function App() {
             <img src="/toolinger-logo.svg" alt="Toolinger logo" className="h-9 w-9 rounded-lg" />
             <div className="min-w-0">
               <div className="truncate text-lg font-bold tracking-tight">Toolinger</div>
-              <div className="truncate text-xs text-slate-600">90+ Free Online Tools</div>
+              <div className="truncate text-xs text-slate-600">120+ Free Online Tools</div>
             </div>
           </div>
 
@@ -3382,7 +3474,7 @@ function App() {
           <div className="absolute -left-24 top-10 h-72 w-72 rounded-full bg-violet-300/30 blur-3xl" />
           <div className="absolute -right-24 bottom-10 h-72 w-72 rounded-full bg-cyan-300/30 blur-3xl" />
           <div className="relative mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-            <p className="mb-3 text-sm font-semibold tracking-[0.15em] text-blue-700">TOOLINGER | 90+ ONLINE TOOLS</p>
+            <p className="mb-3 text-sm font-semibold tracking-[0.15em] text-blue-700">TOOLINGER | 120+ ONLINE TOOLS</p>
             <h1 className="max-w-3xl text-4xl font-extrabold leading-tight tracking-tight text-slate-900 sm:text-5xl">
               One simple place for everyday digital work.
             </h1>
@@ -3403,11 +3495,11 @@ function App() {
             </div>
             <div className="mt-10 grid grid-cols-2 gap-3 sm:grid-cols-4">
               <div className={metricBox}>
-                <div className="text-2xl font-extrabold text-slate-900">90+</div>
+                <div className="text-2xl font-extrabold text-slate-900">120+</div>
                 <div className="text-xs text-slate-600">Useful tools</div>
               </div>
               <div className={metricBox}>
-                <div className="text-2xl font-extrabold text-slate-900">12</div>
+                <div className="text-2xl font-extrabold text-slate-900">13</div>
                 <div className="text-xs text-slate-600">Categories</div>
               </div>
               <div className={metricBox}>

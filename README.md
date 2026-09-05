@@ -1,10 +1,14 @@
 # Toolbox Pro
 
-Toolbox Pro is a client-side collection of 90+ browser utilities for images, text, cryptography, developer workflows, math, unit conversion, date/time, finance, health, and productivity.
+Toolbox Pro powers Toolinger, a production-built collection of 120 browser utilities for images, PDFs, text, developer workflows, health, finance, conversions, social media, and private on-device AI.
 
-## Production branch
+## Local development
 
-The `production-readiness` branch contains deployment-hardening work without changing the existing application architecture.
+Run `npm install`, then `npm run dev`. Use `npm run check` for the full TypeScript, test, and production-build gate.
+
+## Local AI
+
+The AI sentiment and embedding models run in the browser through Transformers.js. Model files are downloaded on first use and stored in the browser cache. User text is not sent to an inference API. The compact embedding model powers semantic similarity, extractive summarization, and keyword extraction.
 
 ### Production checks added
 

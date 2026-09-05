@@ -1,10 +1,10 @@
 {
-  "name": "Toolidea",
-  "short_name": "Toolidea",
-  "description": "90+ browser-based utilities for everyday and developer tasks.",
-  "start_url": "./index.html",
+  "name": "Toolinger — 120+ Online Tools",
+  "short_name": "Toolinger",
+  "description": "Private browser utilities with optional on-device AI.",
+  "start_url": "/",
   "display": "standalone",
-  "background_color": "#0a0a18",
-  "theme_color": "#7c5cff",
-  "icons": []
+  "background_color": "#f8fafc",
+  "theme_color": "#4f46e5",
+  "icons": [{ "src": "/toolinger-logo.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
 }

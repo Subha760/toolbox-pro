@@ -1,37 +1,13 @@
 <!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#090b18">
-<title>Toolinger — 90+ Free Online Tools</title><meta name="description" content="Toolinger — 90+ fast, private browser tools for images, text, security, developers, math and conversions.">
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=20260828-7">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-</head>
-<body>
-<div class="ambient ambient-a"></div><div class="ambient ambient-b"></div>
-<header class="header">
-  <button id="hamburgerBtn" class="hamburger" type="button" aria-label="Open tools" aria-expanded="false"><i></i><i></i><i></i></button>
-  <a class="brand" href="#/" aria-label="Toolinger home"><span class="logo"><img src="toolinger-logo.svg" alt="Toolinger"></span><span><b>Toolinger</b><small>90+ ONLINE TOOLS</small></span></a>
-  <label class="search"><span>⌕</span><input id="toolSearch" type="search" inputmode="search" autocomplete="off" placeholder="Search tools…" aria-label="Search tools"></label>
-  <nav class="topnav"><button data-modal="about" type="button">About</button><button data-modal="privacy" type="button">Privacy</button><button data-modal="terms" type="button">Terms</button><button data-modal="contact" type="button">Contact</button></nav>
-</header>
-<div class="ad ad-top"><span>ADVERTISEMENT</span><strong>Monetag / MoneyTag space</strong></div>
-<section id="landingHome" class="landing">
-  <div class="hero-grid"></div><div class="hero-copy"><div class="eyebrow">✦ 90+ TOOLS · FREE · PRIVATE · NO SIGNUP</div><h1>Your everyday tools,<br><em>beautifully together.</em></h1><p>Convert, calculate, create, format, secure and organize your digital work — instantly in your browser.</p><div class="hero-actions"><button id="exploreToolsBtn" class="btn" type="button">☰ Explore all tools</button><button id="popularToolBtn" class="btn secondary" type="button">✦ Try QR Generator</button></div><div class="trust"><span>⚡ Instant</span><span>🔒 Browser-first</span><span>📱 Mobile ready</span><span>🚫 No signup</span></div></div>
-  <div class="hero-visual"><div class="orbit o1"></div><div class="orbit o2"></div><div class="spark s1"></div><div class="spark s2"></div><div class="tool-card"><div class="cardbar"><span></span><span></span><span></span><b>TOOLINGER / LIVE</b></div><h2>90+ <small>tools</small></h2><p>Everything useful, one tap away.</p><div class="mini-grid"><span>🖼️ Images</span><span>📝 Text</span><span>🔐 Security</span><span>💻 Developer</span><span>🔢 Math</span><span>📐 Convert</span></div><div class="scan"></div></div><div class="float f1">⚡ Instant</div><div class="float f2">🔐 Private</div><div class="float f3">✦ 90+ tools</div></div>
-  <div class="stats"><div><b>90+</b><small>useful tools</small></div><div><b>0</b><small>accounts needed</small></div><div><b>∞</b><small>free local use</small></div></div><div class="hero-foot">Built for phones first <i>•</i> No account required <i>•</i> Keep your files on your device</div>
-</section>
-<div id="drawerBackdrop" class="drawer-backdrop"></div>
-<div id="appShell" class="app-shell">
- <aside id="sidebar" class="sidebar" aria-label="Tool navigation"><div class="drawer-head"><b>All tools</b><button id="drawerClose" type="button" aria-label="Close tools">×</button></div><div id="sidebarContent"></div></aside>
- <main id="mainContent" class="main"><div class="tool-header"><span class="tool-kicker">TOOL</span><h1 id="toolTitle">Loading…</h1><p id="toolDesc"></p></div><div id="toolContainer" class="tool-content"></div><div class="ad ad-inline"><span>ADVERTISEMENT</span><strong>Monetag / MoneyTag space</strong></div></main>
-</div>
-<div class="ad ad-bottom"><span>ADVERTISEMENT</span><strong>Monetag / MoneyTag space</strong></div>
-<footer class="footer"><div class="footer-brand"><span class="logo"><img src="toolinger-logo.svg" alt="Toolinger"></span><div><b>Toolinger</b><p>Fast browser utilities for everyday digital work.</p></div></div><div><h4>Tools</h4><ul id="footerCategoryList"></ul></div><div><h4>Company</h4><ul><li><button data-modal="about" type="button">About</button></li><li><button data-modal="privacy" type="button">Privacy</button></li><li><button data-modal="terms" type="button">Terms</button></li><li><button data-modal="cookies" type="button">Cookies</button></li></ul></div><div><h4>Support</h4><ul><li><button data-modal="contact" type="button">Contact</button></li><li><button data-modal="disclaimer" type="button">Disclaimer</button></li><li><button data-modal="gdpr" type="button">Privacy choices</button></li></ul></div><div class="footer-bottom">© <span id="yearNow"></span> Toolinger <span>•</span> Browser-first processing where supported.</div></footer>
-<div id="cookieBanner" class="cookie"><div class="cookie-icon">🍪</div><div><b>Privacy & advertising choices</b><p>Choose whether non-essential storage may be used for advertising. Your choice stays on this device.</p></div><div class="cookie-actions"><button id="cookieAcceptBtn" class="btn" type="button">Accept All</button><button id="cookieDeclineBtn" class="btn secondary" type="button">Necessary Only</button><button class="cookie-link" data-modal="cookies" type="button">Details</button></div></div>
-<div id="modalOverlay" class="modal-overlay"><div id="modalBox" class="modal"></div></div>
-<script src="policies.js?v=20260828-7"></script><script src="app.js?v=20260828-7"></script><script src="boot.js?v=20260828-7"></script>
-</body></html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#4f46e5" />
+    <meta name="description" content="Toolinger — 120+ fast, private browser tools with optional on-device AI." />
+    <link rel="icon" href="/toolinger-logo.svg" type="image/svg+xml" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <title>Toolinger — 120+ Free Online Tools</title>
+  </head>
+  <body><div id="root"></div><script type="module" src="/main.jsx"></script></body>
+</html>
