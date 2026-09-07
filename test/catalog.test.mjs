@@ -14,3 +14,11 @@ test("every configured engine is rendered", () => {
 });
 test("local AI catalogue is wired", () => assert.equal(tools.filter(({ category }) => category === "ai").length, 4));
 test("production entry mounts React", () => { assert.match(index, /id="root"/); assert.match(index, /src="\.\/main\.jsx"/); });
+test("coin face follows the generated result", () => {
+  assert.match(source, /setLanding\(next\)/);
+  assert.match(source, /landing === "Tails" \? "coin-tails" : "coin-heads"/);
+});
+test("passport studio uses remote AI and Indian presets", () => {
+  assert.match(source, /https:\/\/api\.remove\.bg\/v1\.0\/removebg/);
+  for (const preset of ["passport", "pan", "aadhaar", "uan", "visa"]) assert.match(source, new RegExp(`\\b${preset}: \\{`));
+});

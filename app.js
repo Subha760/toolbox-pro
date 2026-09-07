@@ -1868,6 +1868,7 @@ function QrTool() {
 
 function CoinTool() {
   const [isFlipping, setIsFlipping] = useState(false);
+  const [landing, setLanding] = useState("Heads");
   const [result, setResult] = useState("Heads");
   const [sound, setSound] = useState(true);
 
@@ -1907,6 +1908,7 @@ function CoinTool() {
     setIsFlipping(true);
     if (sound) playFlipSound();
     const next = Math.random() > 0.5 ? "Heads" : "Tails";
+    setLanding(next);
     window.setTimeout(() => {
       setResult(next);
       setIsFlipping(false);
@@ -1920,7 +1922,10 @@ function CoinTool() {
         <input type="checkbox" checked={sound} onChange={(event) => setSound(event.target.checked)} className="h-5 w-5 accent-violet-600" />
       </label>
       <div className="coin-zone">
-        <div className={`coin ${isFlipping ? "coin-flipping" : ""}`} aria-live="polite">
+        <div
+          className={`coin ${landing === "Tails" ? "coin-tails" : "coin-heads"} ${isFlipping ? "coin-flipping" : ""}`}
+          aria-label={isFlipping ? "Coin is flipping" : landing}
+        >
           <div className="coin-face coin-head">H</div>
           <div className="coin-face coin-tail">T</div>
         </div>
@@ -2878,86 +2883,106 @@ function ImageTool({ mode }: { mode: string }) {
   );
 }
 
+const INDIA_PHOTO_PRESETS = {
+  passport: { label: "Indian Passport — 35 × 45 mm", width: 413, height: 531 },
+  pan: { label: "PAN application — 25 × 35 mm", width: 295, height: 413 },
+  aadhaar: { label: "Aadhaar document photo — 35 × 45 mm", width: 413, height: 531 },
+  uan: { label: "UAN / EPFO application — 35 × 45 mm", width: 413, height: 531 },
+  visa: { label: "Visa square — 51 × 51 mm", width: 600, height: 600 },
+};
+
 function PassportTool() {
   const [file, setFile] = useState<File | null>(null);
+  const [sourceUrl, setSourceUrl] = useState("");
+  const [cutoutUrl, setCutoutUrl] = useState("");
   const [background, setBackground] = useState("#FFFFFF");
   const [format, setFormat] = useState("passport");
+  const [customWidth, setCustomWidth] = useState(413);
+  const [customHeight, setCustomHeight] = useState(531);
+  const [zoom, setZoom] = useState(100);
+  const [vertical, setVertical] = useState(50);
+  const [enhance, setEnhance] = useState(true);
+  const [apiKey, setApiKey] = useState("");
   const [preview, setPreview] = useState("");
-  const [status, setStatus] = useState("Upload a clear portrait with a simple background.");
+  const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState("Upload a clear front-facing portrait.");
 
-  const dimensions =
-    format === "passport"
-      ? { width: 413, height: 531 }
-      : format === "us-visa"
-      ? { width: 600, height: 600 }
-      : { width: 420, height: 540 };
+  const preset = format === "custom"
+    ? { label: "Custom", width: Math.max(100, Number(customWidth) || 100), height: Math.max(100, Number(customHeight) || 100) }
+    : INDIA_PHOTO_PRESETS[format as keyof typeof INDIA_PHOTO_PRESETS];
+
+  const selectFile = (next: File | null) => {
+    if (sourceUrl) URL.revokeObjectURL(sourceUrl);
+    if (cutoutUrl) URL.revokeObjectURL(cutoutUrl);
+    setFile(next);
+    setCutoutUrl("");
+    setPreview("");
+    setSourceUrl(next ? URL.createObjectURL(next) : "");
+    setStatus(next ? "Photo ready. Remove its background, then create the document photo." : "Upload a clear front-facing portrait.");
+  };
+
+  const removeBackground = async () => {
+    if (!file) return setStatus("Please upload a portrait first.");
+    if (!apiKey.trim()) return setStatus("Enter your remove.bg API key. It stays only in this page and is not saved.");
+    setBusy(true);
+    setStatus("AI is removing the background…");
+    try {
+      const form = new FormData();
+      form.append("image_file", file);
+      form.append("size", "auto");
+      form.append("type", "person");
+      form.append("format", "png");
+      const response = await fetch("https://api.remove.bg/v1.0/removebg", {
+        method: "POST",
+        headers: { "X-Api-Key": apiKey.trim() },
+        body: form,
+      });
+      if (!response.ok) {
+        const message = await response.text();
+        throw new Error(message || `Background service returned ${response.status}`);
+      }
+      if (cutoutUrl) URL.revokeObjectURL(cutoutUrl);
+      const url = URL.createObjectURL(await response.blob());
+      setCutoutUrl(url);
+      setStatus("Background removed with AI. Choose a studio colour and create the photo.");
+    } catch (error) {
+      setStatus(`Background removal failed: ${error instanceof Error ? error.message.slice(0, 160) : "please check the key and connection"}.`);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const build = async () => {
-    if (!file) {
-      setStatus("Please select a portrait image.");
-      return;
-    }
-
+    const input = cutoutUrl || sourceUrl;
+    if (!input) return setStatus("Please upload a portrait first.");
+    setBusy(true);
     try {
-      const canvas = await drawImageToCanvas(file);
-      const context = canvas.getContext("2d");
-      if (!context) return;
-
-      const image = context.getImageData(0, 0, canvas.width, canvas.height);
-      const data = image.data;
-
-      const corners = [
-        [0, 0],
-        [canvas.width - 1, 0],
-        [0, canvas.height - 1],
-        [canvas.width - 1, canvas.height - 1],
-      ];
-
-      const avg = corners.reduce(
-        (acc, [x, y]) => {
-          const index = (y * canvas.width + x) * 4;
-          acc.r += data[index] ?? 0;
-          acc.g += data[index + 1] ?? 0;
-          acc.b += data[index + 2] ?? 0;
-          return acc;
-        },
-        { r: 0, g: 0, b: 0 }
-      );
-
-      const bg = { r: avg.r / 4, g: avg.g / 4, b: avg.b / 4 };
-
-      for (let index = 0; index < data.length; index += 4) {
-        const dr = Math.abs((data[index] ?? 0) - bg.r);
-        const dg = Math.abs((data[index + 1] ?? 0) - bg.g);
-        const db = Math.abs((data[index + 2] ?? 0) - bg.b);
-        const distance = dr + dg + db;
-        const alpha = distance < 70 ? 0 : 255;
-        data[index + 3] = alpha;
-      }
-
-      context.putImageData(image, 0, 0);
-
+      const image = await loadImage(input);
       const output = document.createElement("canvas");
-      output.width = dimensions.width;
-      output.height = dimensions.height;
-      const outContext = output.getContext("2d");
-      if (!outContext) return;
-
-      outContext.fillStyle = background;
-      outContext.fillRect(0, 0, output.width, output.height);
-
-      const scale = Math.min(output.width / canvas.width, output.height / canvas.height);
-      const drawWidth = canvas.width * scale;
-      const drawHeight = canvas.height * scale;
+      output.width = preset.width;
+      output.height = preset.height;
+      const context = output.getContext("2d");
+      if (!context) throw new Error("Canvas is unavailable");
+      context.imageSmoothingEnabled = true;
+      context.imageSmoothingQuality = "high";
+      context.fillStyle = background;
+      context.fillRect(0, 0, output.width, output.height);
+      const base = Math.max(output.width / image.width, output.height / image.height);
+      const scale = base * (zoom / 100);
+      const drawWidth = image.width * scale;
+      const drawHeight = image.height * scale;
       const dx = (output.width - drawWidth) / 2;
-      const dy = output.height - drawHeight;
-      outContext.drawImage(canvas, dx, Math.max(0, dy), drawWidth, drawHeight);
-
-      const url = output.toDataURL("image/png");
-      setPreview(url);
-      setStatus("Portrait extracted and preview updated.");
+      const travel = Math.max(0, drawHeight - output.height);
+      const dy = -(travel * vertical) / 100;
+      context.filter = enhance ? "brightness(1.035) contrast(1.07) saturate(1.035)" : "none";
+      context.drawImage(image, dx, dy, drawWidth, drawHeight);
+      context.filter = "none";
+      setPreview(output.toDataURL("image/png"));
+      setStatus(`${preset.label} created at ${preset.width} × ${preset.height}px.`);
     } catch {
-      setStatus("Could not process this image. Please try another portrait.");
+      setStatus("Could not create the photo. Please try a JPG, PNG or WebP portrait.");
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -2983,32 +3008,46 @@ function PassportTool() {
 
   return (
     <ToolPanel>
-      <input
-        className={inputClass}
-        type="file"
-        accept="image/*"
-        onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-      />
+      <div className="rounded-2xl border border-dashed border-violet-300 bg-violet-50 p-4">
+        <div className="mb-2 font-semibold text-slate-900">1. Upload portrait</div>
+        <input className={inputClass} type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => selectFile(event.target.files?.[0] ?? null)} />
+        {sourceUrl ? <img src={sourceUrl} alt="Original portrait" className="mx-auto mt-3 max-h-64 rounded-xl border bg-white object-contain" /> : null}
+      </div>
+      <div className="rounded-2xl border border-slate-200 bg-white p-4">
+        <div className="mb-2 font-semibold text-slate-900">2. AI background removal</div>
+        <Field label="remove.bg API key (not saved)">
+          <input className={inputClass} type="password" value={apiKey} onChange={(event) => setApiKey(event.target.value)} placeholder="Enter your personal API key" autoComplete="off" />
+        </Field>
+        <button type="button" disabled={busy || !file} onClick={removeBackground} className={`${primaryBtn} mt-3 disabled:opacity-50`}>
+          {busy ? "Processing…" : "Remove Background with AI"}
+        </button>
+        {cutoutUrl ? <img src={cutoutUrl} alt="AI background removed" className="mx-auto mt-3 max-h-64 rounded-xl border bg-[linear-gradient(45deg,#eee_25%,transparent_25%),linear-gradient(-45deg,#eee_25%,transparent_25%),linear-gradient(45deg,transparent_75%,#eee_75%),linear-gradient(-45deg,transparent_75%,#eee_75%)] bg-[length:18px_18px] object-contain" /> : null}
+        <p className="mt-2 text-xs text-slate-500">Your portrait is sent directly to remove.bg only when you press the button. The key is kept in memory for this page only.</p>
+      </div>
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="Studio Background">
-          <select className={inputClass} value={background} onChange={(event) => setBackground(event.target.value)}>
-            <option value="#FFFFFF">White</option>
-            <option value="#B8D9FF">Sky Blue</option>
-            <option value="#D7EAFF">Light Blue</option>
-            <option value="#E5E7EB">Light Grey</option>
+        <Field label="Indian document size">
+          <select className={inputClass} value={format} onChange={(event) => setFormat(event.target.value)}>
+            {Object.entries(INDIA_PHOTO_PRESETS).map(([value, item]) => <option key={value} value={value}>{item.label}</option>)}
+            <option value="custom">Custom pixel size</option>
           </select>
         </Field>
-        <Field label="Format">
-          <select className={inputClass} value={format} onChange={(event) => setFormat(event.target.value)}>
-            <option value="passport">Universal Passport</option>
-            <option value="standard">Standard Document Photo</option>
-            <option value="us-visa">US Visa Style</option>
-          </select>
+        <Field label="Studio background">
+          <div className="flex h-12 overflow-hidden rounded-xl border border-slate-300" role="group" aria-label="Studio background colours">
+            {[{ name: "White", color: "#FFFFFF" }, { name: "Navy blue", color: "#163A70" }, { name: "Red", color: "#B91C1C" }].map(({ name, color }) => (
+              <button key={color} type="button" aria-label={name} aria-pressed={background === color} onClick={() => setBackground(color)} className={`flex-1 border-4 ${background === color ? "border-violet-500" : "border-transparent"}`} style={{ backgroundColor: color }} />
+            ))}
+          </div>
         </Field>
       </div>
+      {format === "custom" ? <div className="grid grid-cols-2 gap-3"><Field label="Width (px)"><input className={inputClass} type="number" min="100" max="4000" value={customWidth} onChange={(e) => setCustomWidth(Number(e.target.value))} /></Field><Field label="Height (px)"><input className={inputClass} type="number" min="100" max="4000" value={customHeight} onChange={(e) => setCustomHeight(Number(e.target.value))} /></Field></div> : null}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Field label={`Zoom — ${zoom}%`}><input className="w-full accent-violet-600" type="range" min="100" max="180" value={zoom} onChange={(e) => setZoom(Number(e.target.value))} /></Field>
+        <Field label="Vertical position"><input className="w-full accent-violet-600" type="range" min="0" max="100" value={vertical} onChange={(e) => setVertical(Number(e.target.value))} /></Field>
+      </div>
+      <label className="flex items-center gap-2 text-sm font-medium text-slate-700"><input type="checkbox" checked={enhance} onChange={(e) => setEnhance(e.target.checked)} className="h-5 w-5 accent-violet-600" /> Auto-enhance brightness, colour and contrast</label>
       <div className="flex flex-wrap gap-2">
-        <button type="button" onClick={build} className={primaryBtn}>
-          Generate Preview
+        <button type="button" disabled={busy || !file} onClick={build} className={`${primaryBtn} disabled:opacity-50`}>
+          Create Studio Photo
         </button>
       </div>
       <div className={resultBox}>{status}</div>
@@ -3309,7 +3348,7 @@ function App() {
       <style>{`
         @keyframes coinFlip {
           from { transform: rotateY(0); }
-          to { transform: rotateY(1800deg); }
+          to { transform: rotateY(var(--coin-end)); }
         }
 
         .coin {
@@ -3346,6 +3385,9 @@ function App() {
         .coin-flipping {
           animation: coinFlip 1.4s ease-in-out;
         }
+
+        .coin-heads { --coin-end: 1800deg; transform: rotateY(0deg); }
+        .coin-tails { --coin-end: 1980deg; transform: rotateY(180deg); }
 
         @keyframes rise {
           from { opacity: 0; transform: translateY(12px); }
