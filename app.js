@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { requestCutout, validateEndpoint, validatePhoto } from "./src/background-removal.mjs";
 import { PDFDocument, StandardFonts, degrees, rgb } from "pdf-lib";
 // @ts-ignore
 import QRCode from "qrcode";
@@ -2902,52 +2903,80 @@ function PassportTool() {
   const [zoom, setZoom] = useState(100);
   const [vertical, setVertical] = useState(50);
   const [enhance, setEnhance] = useState(true);
-  const [apiKey, setApiKey] = useState("");
+  const [endpoint, setEndpoint] = useState("");
+  const [serviceStatus, setServiceStatus] = useState("Checking photo service…");
+  const [consent, setConsent] = useState(false);
+  const pendingRequest = useRef<AbortController | null>(null);
+  const photoUrls = useRef({ source: "", cutout: "" });
   const [preview, setPreview] = useState("");
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("Upload a clear front-facing portrait.");
 
+  useEffect(() => {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 8000);
+    fetch("./ai-config.json", { cache: "no-store", signal: controller.signal })
+      .then((response) => { if (!response.ok) throw new Error(); return response.json(); })
+      .then((config) => {
+        const url = validateEndpoint(config.backgroundRemovalUrl);
+        setEndpoint(url);
+        setServiceStatus(url ? "Server-side AI • no account or API key needed" : "Background removal is awaiting server activation. Cropping and downloads are available.");
+      })
+      .catch(() => setServiceStatus("Photo service unavailable. Cropping and downloads are available."))
+      .finally(() => window.clearTimeout(timeout));
+    return () => {
+      controller.abort();
+      pendingRequest.current?.abort();
+      URL.revokeObjectURL(photoUrls.current.source);
+      URL.revokeObjectURL(photoUrls.current.cutout);
+    };
+  }, []);
+
   const preset = format === "custom"
-    ? { label: "Custom", width: Math.max(100, Number(customWidth) || 100), height: Math.max(100, Number(customHeight) || 100) }
+    ? { label: "Custom", width: Math.min(4000, Math.max(100, Math.round(Number(customWidth)) || 100)), height: Math.min(4000, Math.max(100, Math.round(Number(customHeight)) || 100)) }
     : INDIA_PHOTO_PRESETS[format as keyof typeof INDIA_PHOTO_PRESETS];
 
   const selectFile = (next: File | null) => {
+    if (next) {
+      try { validatePhoto(next); } catch (error) { setStatus((error as Error).message); return; }
+    }
     if (sourceUrl) URL.revokeObjectURL(sourceUrl);
     if (cutoutUrl) URL.revokeObjectURL(cutoutUrl);
     setFile(next);
     setCutoutUrl("");
     setPreview("");
-    setSourceUrl(next ? URL.createObjectURL(next) : "");
+    const url = next ? URL.createObjectURL(next) : "";
+    photoUrls.current = { source: url, cutout: "" };
+    setSourceUrl(url);
+    setConsent(false);
     setStatus(next ? "Photo ready. Remove its background, then create the document photo." : "Upload a clear front-facing portrait.");
   };
 
   const removeBackground = async () => {
     if (!file) return setStatus("Please upload a portrait first.");
-    if (!apiKey.trim()) return setStatus("Enter your remove.bg API key. It stays only in this page and is not saved.");
+    if (!endpoint) return setStatus(serviceStatus);
+    if (!consent) return setStatus("Please allow this photo to be sent to the Toolinger photo server.");
+    if (busy) return;
+    const controller = new AbortController();
+    pendingRequest.current = controller;
+    const timeout = window.setTimeout(() => controller.abort(), 90000);
     setBusy(true);
     setStatus("AI is removing the background…");
     try {
-      const form = new FormData();
-      form.append("image_file", file);
-      form.append("size", "auto");
-      form.append("type", "person");
-      form.append("format", "png");
-      const response = await fetch("https://api.remove.bg/v1.0/removebg", {
-        method: "POST",
-        headers: { "X-Api-Key": apiKey.trim() },
-        body: form,
-      });
-      if (!response.ok) {
-        const message = await response.text();
-        throw new Error(message || `Background service returned ${response.status}`);
-      }
+      const blob = await requestCutout(file, endpoint, controller.signal);
+      const url = URL.createObjectURL(blob);
+      try { await loadImage(url); } catch { URL.revokeObjectURL(url); throw new Error("The server returned an unreadable image."); }
+      if (controller.signal.aborted) { URL.revokeObjectURL(url); return; }
       if (cutoutUrl) URL.revokeObjectURL(cutoutUrl);
-      const url = URL.createObjectURL(await response.blob());
+      photoUrls.current.cutout = url;
       setCutoutUrl(url);
+      setPreview("");
       setStatus("Background removed with AI. Choose a studio colour and create the photo.");
     } catch (error) {
-      setStatus(`Background removal failed: ${error instanceof Error ? error.message.slice(0, 160) : "please check the key and connection"}.`);
+      setStatus(controller.signal.aborted ? "Processing stopped or timed out. Your original photo is unchanged." : error instanceof Error ? error.message : "The photo service could not be reached.");
     } finally {
+      window.clearTimeout(timeout);
+      pendingRequest.current = null;
       setBusy(false);
     }
   };
@@ -3010,19 +3039,19 @@ function PassportTool() {
     <ToolPanel>
       <div className="rounded-2xl border border-dashed border-violet-300 bg-violet-50 p-4">
         <div className="mb-2 font-semibold text-slate-900">1. Upload portrait</div>
-        <input className={inputClass} type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => selectFile(event.target.files?.[0] ?? null)} />
+        <input disabled={busy} className={inputClass} type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => selectFile(event.target.files?.[0] ?? null)} />
         {sourceUrl ? <img src={sourceUrl} alt="Original portrait" className="mx-auto mt-3 max-h-64 rounded-xl border bg-white object-contain" /> : null}
       </div>
       <div className="rounded-2xl border border-slate-200 bg-white p-4">
         <div className="mb-2 font-semibold text-slate-900">2. AI background removal</div>
-        <Field label="remove.bg API key (not saved)">
-          <input className={inputClass} type="password" value={apiKey} onChange={(event) => setApiKey(event.target.value)} placeholder="Enter your personal API key" autoComplete="off" />
-        </Field>
-        <button type="button" disabled={busy || !file} onClick={removeBackground} className={`${primaryBtn} mt-3 disabled:opacity-50`}>
+        <p className="text-sm text-slate-600" role="status">{serviceStatus}</p>
+        {endpoint ? <label className="mt-3 flex items-start gap-2 text-sm text-slate-600"><input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} />Allow this photo to be sent to Toolinger’s photo server ({new URL(endpoint).hostname}) for background removal. The app does not save uploaded photos.</label> : null}
+        <button type="button" disabled={busy || !file || !endpoint || !consent} onClick={removeBackground} className={`${primaryBtn} mt-3 disabled:opacity-50`}>
           {busy ? "Processing…" : "Remove Background with AI"}
         </button>
+        {busy && pendingRequest.current ? <button type="button" className={`${secondaryBtn} ml-2`} onClick={() => pendingRequest.current?.abort()}>Cancel</button> : null}
         {cutoutUrl ? <img src={cutoutUrl} alt="AI background removed" className="mx-auto mt-3 max-h-64 rounded-xl border bg-[linear-gradient(45deg,#eee_25%,transparent_25%),linear-gradient(-45deg,#eee_25%,transparent_25%),linear-gradient(45deg,transparent_75%,#eee_75%),linear-gradient(-45deg,transparent_75%,#eee_75%)] bg-[length:18px_18px] object-contain" /> : null}
-        <p className="mt-2 text-xs text-slate-500">Your portrait is sent directly to remove.bg only when you press the button. The key is kept in memory for this page only.</p>
+        <p className="mt-2 text-xs text-slate-500">No visitor account or API key. AI runs on the server, not your device. Review hair and edges before downloading.</p>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Indian document size">
@@ -3418,7 +3447,7 @@ function App() {
               <span className="block h-0.5 w-5 rounded bg-slate-900" />
               <span className="block h-0.5 w-5 rounded bg-slate-900" />
             </button>
-            <img src="/toolinger-logo.svg" alt="Toolinger logo" className="h-9 w-9 rounded-lg" />
+            <img src="./toolinger-logo.svg" alt="Toolinger logo" className="h-11 w-11 rounded-xl" />
             <div className="min-w-0">
               <div className="truncate text-lg font-bold tracking-tight">Toolinger</div>
               <div className="truncate text-xs text-slate-600">120+ Free Online Tools</div>
@@ -3622,7 +3651,7 @@ function App() {
         <div className="mx-auto grid w-full max-w-7xl gap-6 px-4 py-8 sm:grid-cols-2 sm:px-6 lg:grid-cols-3 lg:px-8">
           <div>
             <div className="flex items-center gap-2">
-              <img src="/toolinger-logo.svg" alt="Toolinger" className="h-8 w-8" />
+              <img src="./toolinger-logo.svg" alt="Toolinger" className="h-10 w-10" />
               <div className="text-xl font-bold">Toolinger</div>
             </div>
             <p className="mt-3 text-sm text-slate-600">

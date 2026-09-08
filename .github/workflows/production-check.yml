@@ -16,6 +16,12 @@ jobs:
           node-version: 22
       - run: npm install --no-audit --no-fund
       - run: npm run check
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install Pillow
+      - name: Photo service contract tests (no model inference)
+        run: python -m unittest discover -s backend -p 'test_*.py'
       - name: Verify advertising configuration
         run: |
           if grep -RIn --exclude-dir=.git --exclude-dir=node_modules --exclude=production-check.yml 'pub-XXXXXXXXXXXXXXXX\|ca-pub-XXXXXXXXXXXXXXXX' .; then exit 1; fi
