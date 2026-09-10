@@ -1,0 +1,64 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Private portrait AI</title></head><body>
+<script>
+const report = (type, data = {}) => parent.postMessage({type, ...data}, location.origin);
+const bases = ['https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation@0.1.1675465747/', 'https://unpkg.com/@mediapipe/selfie_segmentation@0.1.1675465747/'];
+function script(base) {
+  return new Promise((resolve, reject) => {
+    const el = document.createElement('script');
+    const timer = setTimeout(() => { el.remove(); reject(new Error('Download timeout')); }, 15000);
+    el.src = base + 'selfie_segmentation.js'; el.crossOrigin = 'anonymous';
+    el.onload = () => { clearTimeout(timer); resolve(); };
+    el.onerror = () => { clearTimeout(timer); el.remove(); reject(new Error('Download failed')); };
+    document.head.append(el);
+  });
+}
+let running = false;
+window.addEventListener('message', async ({origin, source, data}) => {
+  if (origin !== location.origin || source !== parent || running || !(data?.file instanceof Blob)) return;
+  running = true;
+  let engine, url;
+  try {
+    let base;
+    for (const candidate of bases) {
+      try { await script(candidate); base = candidate; break; }
+      catch { report('progress', {message:'Trying the backup AI download…'}); }
+    }
+    if (!base) throw new Error('AI download failed. Check your connection and try again.');
+    url = URL.createObjectURL(data.file);
+    const image = new Image(); image.src = url; await image.decode();
+    if (image.naturalWidth * image.naturalHeight > 24000000) throw new Error('Use a portrait below 24 megapixels.');
+    const scale = Math.min(1, 1600 / Math.max(image.naturalWidth, image.naturalHeight));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+    engine = new SelfieSegmentation({locateFile: file => base + file});
+    engine.setOptions({modelSelection:0, selfieMode:false});
+    const result = new Promise((resolve, reject) => engine.onResults(results => {
+      try {
+        const out = document.createElement('canvas'); out.width = canvas.width; out.height = canvas.height;
+        const c = out.getContext('2d');
+        c.drawImage(results.segmentationMask, 0, 0, out.width, out.height);
+        const pixels = c.getImageData(0, 0, out.width, out.height).data;
+        let min = 255, max = 0;
+        for(let i=3;i<pixels.length;i+=4) { min=Math.min(min,pixels[i]);max=Math.max(max,pixels[i]); }
+        if(max < 8 || min > 247) throw new Error('No clear person found. Try a closer, well-lit portrait.');
+        c.globalCompositeOperation = 'source-in'; c.drawImage(canvas, 0, 0);
+        out.toBlob(blob => blob ? resolve(blob) : reject(new Error('Could not export the cutout.')), 'image/png');
+      } catch(error) { reject(error); }
+    }));
+    // Attach a handler immediately so send failures never leave an unhandled rejection.
+    result.catch(() => {});
+    report('progress', {message:'Preparing model and separating your portrait on this device…'});
+    await engine.send({image:canvas});
+    report('result', {blob:await result});
+  } catch(error) {
+    report('error', {message:error.message || 'AI could not run. Try a current Chrome browser and a smaller image.'});
+  } finally {
+    if(url) URL.revokeObjectURL(url);
+    if(engine) await engine.close().catch(() => {});
+  }
+});
+report('ready');
+</script></body></html>

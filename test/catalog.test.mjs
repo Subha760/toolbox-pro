@@ -18,8 +18,8 @@ test("coin face follows the generated result", () => {
   assert.match(source, /setLanding\(next\)/);
   assert.match(source, /landing === "Tails" \? "coin-tails" : "coin-heads"/);
 });
-test("passport studio uses remote AI and Indian presets", () => {
-  assert.match(source, /requestCutout\(file, endpoint/);
+test("passport studio uses on-device AI and Indian presets", () => {
+  assert.match(source, /localCutout\(file, controller.signal/);
   assert.doesNotMatch(source, /api\.remove\.bg|X-Api-Key|setApiKey/);
   for (const preset of ["passport", "pan", "aadhaar", "uan", "visa"]) assert.match(source, new RegExp(`\\b${preset}: \\{`));
 });

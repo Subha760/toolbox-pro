@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { requestCutout, validateEndpoint, validatePhoto } from "./src/background-removal.mjs";
+import { validatePhoto } from "./src/background-removal.mjs";
+import { localCutout } from "./src/local-cutout.mjs";
 import { PDFDocument, StandardFonts, degrees, rgb } from "pdf-lib";
 // @ts-ignore
 import QRCode from "qrcode";
@@ -2903,9 +2904,7 @@ function PassportTool() {
   const [zoom, setZoom] = useState(100);
   const [vertical, setVertical] = useState(50);
   const [enhance, setEnhance] = useState(true);
-  const [endpoint, setEndpoint] = useState("");
-  const [serviceStatus, setServiceStatus] = useState("Checking photo service…");
-  const [consent, setConsent] = useState(false);
+  const serviceStatus = "Free on-device AI. Your photo stays in this browser. Model files download on first use.";
   const pendingRequest = useRef<AbortController | null>(null);
   const photoUrls = useRef({ source: "", cutout: "" });
   const [preview, setPreview] = useState("");
@@ -2913,19 +2912,7 @@ function PassportTool() {
   const [status, setStatus] = useState("Upload a clear front-facing portrait.");
 
   useEffect(() => {
-    const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), 8000);
-    fetch("./ai-config.json", { cache: "no-store", signal: controller.signal })
-      .then((response) => { if (!response.ok) throw new Error(); return response.json(); })
-      .then((config) => {
-        const url = validateEndpoint(config.backgroundRemovalUrl);
-        setEndpoint(url);
-        setServiceStatus(url ? "Server-side AI • no account or API key needed" : "Background removal is awaiting server activation. Cropping and downloads are available.");
-      })
-      .catch(() => setServiceStatus("Photo service unavailable. Cropping and downloads are available."))
-      .finally(() => window.clearTimeout(timeout));
     return () => {
-      controller.abort();
       pendingRequest.current?.abort();
       URL.revokeObjectURL(photoUrls.current.source);
       URL.revokeObjectURL(photoUrls.current.cutout);
@@ -2948,14 +2935,11 @@ function PassportTool() {
     const url = next ? URL.createObjectURL(next) : "";
     photoUrls.current = { source: url, cutout: "" };
     setSourceUrl(url);
-    setConsent(false);
     setStatus(next ? "Photo ready. Remove its background, then create the document photo." : "Upload a clear front-facing portrait.");
   };
 
   const removeBackground = async () => {
     if (!file) return setStatus("Please upload a portrait first.");
-    if (!endpoint) return setStatus(serviceStatus);
-    if (!consent) return setStatus("Please allow this photo to be sent to the Toolinger photo server.");
     if (busy) return;
     const controller = new AbortController();
     pendingRequest.current = controller;
@@ -2963,9 +2947,9 @@ function PassportTool() {
     setBusy(true);
     setStatus("AI is removing the background…");
     try {
-      const blob = await requestCutout(file, endpoint, controller.signal);
+      const blob = await localCutout(file, controller.signal, setStatus);
       const url = URL.createObjectURL(blob);
-      try { await loadImage(url); } catch { URL.revokeObjectURL(url); throw new Error("The server returned an unreadable image."); }
+      try { await loadImage(url); } catch { URL.revokeObjectURL(url); throw new Error("The AI returned an unreadable image."); }
       if (controller.signal.aborted) { URL.revokeObjectURL(url); return; }
       if (cutoutUrl) URL.revokeObjectURL(cutoutUrl);
       photoUrls.current.cutout = url;
@@ -2973,7 +2957,7 @@ function PassportTool() {
       setPreview("");
       setStatus("Background removed with AI. Choose a studio colour and create the photo.");
     } catch (error) {
-      setStatus(controller.signal.aborted ? "Processing stopped or timed out. Your original photo is unchanged." : error instanceof Error ? error.message : "The photo service could not be reached.");
+      setStatus(controller.signal.aborted ? "Processing stopped or timed out. Your original photo is unchanged." : error instanceof Error ? error.message : "AI could not start. Try another browser or a smaller portrait.");
     } finally {
       window.clearTimeout(timeout);
       pendingRequest.current = null;
@@ -3045,13 +3029,12 @@ function PassportTool() {
       <div className="rounded-2xl border border-slate-200 bg-white p-4">
         <div className="mb-2 font-semibold text-slate-900">2. AI background removal</div>
         <p className="text-sm text-slate-600" role="status">{serviceStatus}</p>
-        {endpoint ? <label className="mt-3 flex items-start gap-2 text-sm text-slate-600"><input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} />Allow this photo to be sent to Toolinger’s photo server ({new URL(endpoint).hostname}) for background removal. The app does not save uploaded photos.</label> : null}
-        <button type="button" disabled={busy || !file || !endpoint || !consent} onClick={removeBackground} className={`${primaryBtn} mt-3 disabled:opacity-50`}>
+        <button type="button" disabled={busy || !file} onClick={removeBackground} className={`${primaryBtn} mt-3 disabled:opacity-50`}>
           {busy ? "Processing…" : "Remove Background with AI"}
         </button>
         {busy && pendingRequest.current ? <button type="button" className={`${secondaryBtn} ml-2`} onClick={() => pendingRequest.current?.abort()}>Cancel</button> : null}
         {cutoutUrl ? <img src={cutoutUrl} alt="AI background removed" className="mx-auto mt-3 max-h-64 rounded-xl border bg-[linear-gradient(45deg,#eee_25%,transparent_25%),linear-gradient(-45deg,#eee_25%,transparent_25%),linear-gradient(45deg,transparent_75%,#eee_75%),linear-gradient(-45deg,transparent_75%,#eee_75%)] bg-[length:18px_18px] object-contain" /> : null}
-        <p className="mt-2 text-xs text-slate-500">No visitor account or API key. AI runs on the server, not your device. Review hair and edges before downloading.</p>
+        <p className="mt-2 text-xs text-slate-500">Lightweight portrait AI • no account or API key. Best for one clearly visible person. Fine hair and complex edges may need correction; review before downloading.</p>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Indian document size">
