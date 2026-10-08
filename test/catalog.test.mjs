@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const source = await readFile(new URL("../app.js", import.meta.url), "utf8");
+const source = await readFile(new URL("../app.tsx", import.meta.url), "utf8");
 const index = await readFile(new URL("../index.html", import.meta.url), "utf8");
 const tools = [...source.matchAll(/\{ id: "([^"]+)", name: "([^"]+)", category: "([^"]+)", description: "([^"]+)", keywords: \[[^\]]*\], engine: "([^"]+)"(?:, mode: "([^"]+)")? \}/g)]
   .map((match) => ({ id: match[1], name: match[2], category: match[3], engine: match[5], mode: match[6] }));

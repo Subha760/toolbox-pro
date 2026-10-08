@@ -5,12 +5,15 @@ on:
   push:
     branches: [main]
     paths:
-      - 'app.js'
+      - 'app.tsx'
       - 'main.jsx'
       - 'index.html'
       - 'src/**'
       - 'public/**'
       - 'package.json'
+      - 'package-lock.json'
+      - 'styles.css'
+      - 'postcss.config.js'
       - 'vite.config.js'
       - 'capacitor.config.ts'
       - '.github/workflows/android-apk.yml'
@@ -21,6 +24,8 @@ permissions:
 jobs:
   test-and-build-apk:
     runs-on: ubuntu-latest
+    env:
+      ONNXRUNTIME_NODE_INSTALL_CUDA: skip
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
@@ -33,7 +38,7 @@ jobs:
           java-version: '21'
       - name: Install and test website
         run: |
-          npm install --no-audit --no-fund
+          npm ci --no-audit --no-fund
           npm run check
       - name: Add Android wrapper
         run: |

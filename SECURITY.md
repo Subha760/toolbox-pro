@@ -8,4 +8,4 @@ Do not commit API keys, ad-network credentials, private tokens, or personal info
 
 ## Scope
 
-Toolbox Pro is primarily a client-side static web application. User files and tool inputs are intended to remain in the browser; third-party CDN and advertising behavior is governed by their respective services and policies.
+Toolinger is primarily a client-side static web application. User files and tool inputs are intended to remain in the browser; optional AI assets load from third-party providers under their own policies. This build has no active advertising or analytics scripts.

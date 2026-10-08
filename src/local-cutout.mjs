@@ -1,5 +1,6 @@
 import { validatePhoto } from './background-removal.mjs';
 
+/** @param {File} file @param {AbortSignal} signal @param {(message: string) => void} progress */
 export function localCutout(file, signal, progress = () => {}) {
   validatePhoto(file);
   return new Promise((resolve, reject) => {

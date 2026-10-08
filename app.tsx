@@ -1,9 +1,10 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState, useId, useContext } from "react";
 import { validatePhoto } from "./src/background-removal.mjs";
 import { localCutout } from "./src/local-cutout.mjs";
-import { PDFDocument, StandardFonts, degrees, rgb } from "pdf-lib";
-// @ts-ignore
-import QRCode from "qrcode";
+import type { PDFDocument } from "pdf-lib";
+
+import { LEGAL_CONTENT } from "./src/policies";
+import { parsePageSelection, securePassword, portraitLayout, sheetLayout } from "./src/tool-utils.mjs";
 
 type CategoryId =
   | "image"
@@ -467,7 +468,7 @@ const downloadBlob = (blob: Blob, fileName: string) => {
   anchor.href = url;
   anchor.download = fileName;
   anchor.click();
-  URL.revokeObjectURL(url);
+  window.setTimeout(() => URL.revokeObjectURL(url), 10000);
 };
 
 const readAsArrayBuffer = (blob: Blob) =>
@@ -517,8 +518,9 @@ const copyToClipboard = async (text: string) => {
   textarea.style.left = "-9999px";
   document.body.appendChild(textarea);
   textarea.select();
-  document.execCommand("copy");
+  const copied = document.execCommand("copy");
   textarea.remove();
+  if (!copied) throw new Error("Select the result and copy it manually.");
 };
 
 const generateUuid = () => {
@@ -548,51 +550,8 @@ const generateUuid = () => {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 };
 
-const randomPassword = (
-  length: number,
-  includeUpper: boolean,
-  includeLower: boolean,
-  includeNumbers: boolean,
-  includeSymbols: boolean
-) => {
-  const lower = "abcdefghijklmnopqrstuvwxyz";
-  const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  const numbers = "0123456789";
-  const symbols = "!@#$%^&*()-_=+[]{};:,.?/";
-
-  let source = "";
-  if (includeUpper) source += upper;
-  if (includeLower) source += lower;
-  if (includeNumbers) source += numbers;
-  if (includeSymbols) source += symbols;
-
-  if (!source) source = lower;
-
-  const cryptoObj = globalThis.crypto as Crypto | undefined;
-  let output = "";
-
-  while (output.length < length) {
-    if (cryptoObj?.getRandomValues) {
-      const values = new Uint32Array(length - output.length);
-      cryptoObj.getRandomValues(values);
-      const max = Math.floor(0x100000000 / source.length) * source.length;
-
-      for (const value of values) {
-        if (value % max < max) {
-          const char = source[value % source.length];
-          if (char) output += char;
-        }
-      }
-    } else {
-      for (let i = 0; i < length - output.length; i += 1) {
-        const char = source[Math.floor(Math.random() * source.length)];
-        if (char) output += char;
-      }
-    }
-  }
-
-  return output.slice(0, length);
-};
+const randomPassword = (length: number, upper: boolean, lower: boolean, numbers: boolean, symbols: boolean) =>
+  securePassword(length, [upper && "ABCDEFGHIJKLMNOPQRSTUVWXYZ", lower && "abcdefghijklmnopqrstuvwxyz", numbers && "0123456789", symbols && "!@#$%^&*()-_=+[]{};:,.?/"].filter(Boolean));
 
 const canvasToBlob = (canvas: HTMLCanvasElement, type = "image/png", quality?: number) =>
   new Promise<Blob>((resolve, reject) => {
@@ -648,11 +607,12 @@ const embedImageInPdf = async (pdf: PDFDocument, file: File) => {
 };
 
 function ToolPanel({ children }: { children: React.ReactNode }) {
-  return <div className={`${glassPanel} space-y-4`}>{children}</div>;
+  return <div className={`${glassPanel} tool-panel space-y-4`}>{children}</div>;
 }
 
 function CopyButton({ text, label = "Copy" }: { text: string; label?: string }) {
   const [copied, setCopied] = useState(false);
+  const [copyError, setCopyError] = useState(false);
 
   if (!text.trim()) return null;
 
@@ -661,30 +621,33 @@ function CopyButton({ text, label = "Copy" }: { text: string; label?: string }) 
       type="button"
       className={secondaryBtn}
       onClick={async () => {
-        await copyToClipboard(text);
+        try { await copyToClipboard(text); setCopyError(false); } catch { setCopyError(true); return; }
         setCopied(true);
         window.setTimeout(() => setCopied(false), 1400);
       }}
     >
-      {copied ? "Copied" : label}
+      {copyError ? "Select text to copy" : copied ? "Copied" : label}
     </button>
   );
 }
 
 function Field({ label, children, className = "" }: { label: string; children: React.ReactNode; className?: string }) {
+  const id = useId();
   return (
-    <label className={`block text-sm font-medium text-slate-700 ${className}`}>
-      {label}
-      <div className="mt-1">{children}</div>
-    </label>
+    <div className={`block text-sm font-medium text-slate-700 ${className}`}>
+      <label htmlFor={id}>{label}</label>
+      <div className="mt-1">{React.Children.map(children, child => React.isValidElement(child) && typeof child.type === "string" && ["input", "textarea", "select"].includes(child.type) ? React.cloneElement(child as React.ReactElement<{id?: string}>, {id}) : child)}</div>
+    </div>
   );
 }
 
+const SampleContext = React.createContext("");
+
 function TextTransformTool({ mode }: { mode: string }) {
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState(useContext(SampleContext));
   const [output, setOutput] = useState("");
 
-  const runTool = () => {
+  const runTool = async () => {
     if (mode === "txt-download") {
       if (!input.trim()) {
         setOutput("Please enter text to download.");
@@ -724,7 +687,7 @@ function TextTransformTool({ mode }: { mode: string }) {
       case "reverse":
         setOutput(
           [
-            `Characters:\n${input.split("").reverse().join("")}`,
+            `Characters:\n${Array.from(input).reverse().join("")}`,
             `Lines:\n${input.split("\n").reverse().join("\n")}`,
           ].join("\n\n")
         );
@@ -745,27 +708,24 @@ function TextTransformTool({ mode }: { mode: string }) {
         const trimmed = input.trim();
         const maybeBinary = /^[01\s]+$/.test(trimmed);
         if (maybeBinary) {
-          const decoded = trimmed
-            .split(/\s+/)
-            .map((byte) => String.fromCharCode(parseInt(byte, 2)))
-            .join("");
-          setOutput(decoded);
+          const bytes = trimmed.split(/\s+/);
+          if (bytes.some(byte => byte.length !== 8)) {setOutput("Use eight-bit bytes separated by spaces."); break;}
+          try {setOutput(new TextDecoder("utf-8", {fatal: true}).decode(Uint8Array.from(bytes, byte => parseInt(byte, 2))));} catch {setOutput("These bytes are not valid UTF-8 text.");}
         } else {
-          setOutput(input.split("").map((char) => char.charCodeAt(0).toString(2).padStart(8, "0")).join(" "));
+          setOutput(Array.from(new TextEncoder().encode(input), byte => byte.toString(2).padStart(8, "0")).join(" "));
         }
         break;
       }
       case "html-format":
       case "css-format":
       case "js-format": {
-        const formatted = input
-          .replace(/>\s*</g, ">\n<")
-          .replace(/[{}]/g, (match) => `${match}\n`)
-          .split("\n")
-          .map((line) => line.trim())
-          .filter(Boolean)
-          .join("\n");
-        setOutput(formatted);
+        try {
+          const prettier = await import("prettier/standalone");
+          const parser = mode === "html-format" ? "html" : mode === "css-format" ? "css" : "babel";
+          const plugin = parser === "html" ? await import("prettier/plugins/html") : parser === "css" ? await import("prettier/plugins/postcss") : await import("prettier/plugins/babel");
+          const estree = parser === "babel" ? await import("prettier/plugins/estree") : null;
+          setOutput(await prettier.format(input, {parser, plugins: estree ? [plugin, estree] : [plugin]}));
+        } catch { setOutput("Could not format this code. Check its syntax."); }
         break;
       }
       default:
@@ -780,7 +740,7 @@ function TextTransformTool({ mode }: { mode: string }) {
 
   return (
     <ToolPanel>
-      <textarea
+      <textarea aria-label="Input text"
         value={input}
         onChange={(event) => setInput(event.target.value)}
         placeholder="Enter text"
@@ -807,13 +767,13 @@ function TextTransformTool({ mode }: { mode: string }) {
           Clear
         </button>
       </div>
-      <textarea value={output} readOnly className={`${inputClass} min-h-40`} placeholder="Result" />
+      <textarea value={output} aria-label="Result" readOnly className={`${inputClass} min-h-40`} placeholder="Result" />
     </ToolPanel>
   );
 }
 
 function TextAnalysisTool({ mode }: { mode: string }) {
-  const [text, setText] = useState("");
+  const [text, setText] = useState(useContext(SampleContext));
 
   const stats = useMemo(() => {
     const words = text.trim() ? text.trim().split(/\s+/).length : 0;
@@ -839,7 +799,7 @@ function TextAnalysisTool({ mode }: { mode: string }) {
 
   return (
     <ToolPanel>
-      <textarea
+      <textarea aria-label="Input text"
         value={text}
         onChange={(event) => setText(event.target.value)}
         className={`${inputClass} min-h-44`}
@@ -866,7 +826,7 @@ function TextAnalysisTool({ mode }: { mode: string }) {
 }
 
 function TextLinesTool({ mode }: { mode: string }) {
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState(useContext(SampleContext));
   const [output, setOutput] = useState("");
 
   const process = () => {
@@ -896,7 +856,7 @@ function TextLinesTool({ mode }: { mode: string }) {
 
   return (
     <ToolPanel>
-      <textarea
+      <textarea aria-label="Input text"
         value={input}
         onChange={(event) => setInput(event.target.value)}
         className={`${inputClass} min-h-40`}
@@ -918,13 +878,13 @@ function TextLinesTool({ mode }: { mode: string }) {
           Clear
         </button>
       </div>
-      <textarea value={output} readOnly className={`${inputClass} min-h-32`} placeholder="Result" />
+      <textarea value={output} aria-label="Result" readOnly className={`${inputClass} min-h-32`} placeholder="Result" />
     </ToolPanel>
   );
 }
 
 function FindReplaceTool() {
-  const [text, setText] = useState("");
+  const [text, setText] = useState(useContext(SampleContext));
   const [find, setFind] = useState("");
   const [replaceWith, setReplaceWith] = useState("");
   const [result, setResult] = useState("");
@@ -942,7 +902,7 @@ function FindReplaceTool() {
 
   return (
     <ToolPanel>
-      <textarea
+      <textarea aria-label="Input text"
         className={`${inputClass} min-h-36`}
         value={text}
         onChange={(event) => setText(event.target.value)}
@@ -977,7 +937,7 @@ function FindReplaceTool() {
         </button>
         <CopyButton text={result} label="Copy Result" />
       </div>
-      <textarea className={`${inputClass} min-h-36`} value={result} readOnly placeholder="Result" />
+      <textarea className={`${inputClass} min-h-36`} value={result} aria-label="Result" readOnly placeholder="Result" />
     </ToolPanel>
   );
 }
@@ -996,7 +956,7 @@ function MarkdownPreviewTool() {
       .replace(/`(.+?)`/g, '<code class="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[0.85rem]">$1</code>')
       .replace(
         /\[([^\]]+)\]\(([^)]+)\)/g,
-        '<a href="$2" target="_blank" rel="noreferrer" class="font-medium text-violet-700 underline">$1</a>'
+        (_match, label, url) => /^(https?:\/\/|mailto:|#)/i.test(url) ? `<a href="${url}" target="_blank" rel="noreferrer" class="font-medium text-violet-700 underline">${label}</a>` : label
       )
       .replace(/\n/g, "<br />");
   }, [text]);
@@ -1004,7 +964,7 @@ function MarkdownPreviewTool() {
   return (
     <ToolPanel>
       <div className="grid gap-3 md:grid-cols-2">
-        <textarea className={`${inputClass} min-h-48`} value={text} onChange={(event) => setText(event.target.value)} />
+        <textarea aria-label="Input text" className={`${inputClass} min-h-48`} value={text} onChange={(event) => setText(event.target.value)} />
         <div className={`${inputClass} min-h-48 overflow-auto`} dangerouslySetInnerHTML={{ __html: preview }} />
       </div>
       <div className="flex flex-wrap gap-2">
@@ -1015,7 +975,7 @@ function MarkdownPreviewTool() {
 }
 
 function JsonTool({ mode }: { mode: string }) {
-  const [input, setInput] = useState('{"tool":"toolinger"}');
+  const [input, setInput] = useState(useContext(SampleContext) || '{"tool":"toolinger"}');
   const [result, setResult] = useState("");
   const [error, setError] = useState("");
 
@@ -1036,7 +996,7 @@ function JsonTool({ mode }: { mode: string }) {
 
   return (
     <ToolPanel>
-      <textarea className={`${inputClass} min-h-44`} value={input} onChange={(event) => setInput(event.target.value)} />
+      <textarea aria-label="Input text" className={`${inputClass} min-h-44`} value={input} onChange={(event) => setInput(event.target.value)} />
       <div className="flex flex-wrap gap-2">
         <button type="button" onClick={run} className={primaryBtn}>
           Run Tool
@@ -1044,13 +1004,13 @@ function JsonTool({ mode }: { mode: string }) {
         <CopyButton text={result} label="Copy Result" />
       </div>
       {error ? <div className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div> : null}
-      <textarea className={`${inputClass} min-h-32`} value={result} readOnly />
+      <textarea className={`${inputClass} min-h-32`} value={result} aria-label="Result" readOnly />
     </ToolPanel>
   );
 }
 
 function Base64Tool({ mode }: { mode: string }) {
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState(useContext(SampleContext));
   const [result, setResult] = useState("");
 
   const run = () => {
@@ -1071,7 +1031,7 @@ function Base64Tool({ mode }: { mode: string }) {
 
   return (
     <ToolPanel>
-      <textarea
+      <textarea aria-label="Input text"
         className={`${inputClass} min-h-40`}
         value={input}
         onChange={(event) => setInput(event.target.value)}
@@ -1083,13 +1043,13 @@ function Base64Tool({ mode }: { mode: string }) {
         </button>
         <CopyButton text={result} label="Copy Result" />
       </div>
-      <textarea className={`${inputClass} min-h-40`} value={result} readOnly placeholder="Result" />
+      <textarea className={`${inputClass} min-h-40`} value={result} aria-label="Result" readOnly placeholder="Result" />
     </ToolPanel>
   );
 }
 
 function UrlTool({ mode }: { mode: string }) {
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState(useContext(SampleContext));
   const [result, setResult] = useState("");
 
   const run = () => {
@@ -1102,7 +1062,7 @@ function UrlTool({ mode }: { mode: string }) {
 
   return (
     <ToolPanel>
-      <textarea
+      <textarea aria-label="Input text"
         className={`${inputClass} min-h-36`}
         value={input}
         onChange={(event) => setInput(event.target.value)}
@@ -1114,7 +1074,7 @@ function UrlTool({ mode }: { mode: string }) {
         </button>
         <CopyButton text={result} label="Copy Result" />
       </div>
-      <textarea className={`${inputClass} min-h-36`} value={result} readOnly />
+      <textarea className={`${inputClass} min-h-36`} value={result} aria-label="Result" readOnly />
     </ToolPanel>
   );
 }
@@ -1146,7 +1106,7 @@ function UuidTool() {
         </button>
         <CopyButton text={result} label="Copy UUIDs" />
       </div>
-      <textarea className={`${inputClass} min-h-44`} readOnly value={result} />
+      <textarea className={`${inputClass} min-h-44`} aria-label="Result" readOnly value={result} />
     </ToolPanel>
   );
 }
@@ -1161,6 +1121,7 @@ function PasswordTool() {
 
   const generate = () => {
     const safeLength = clamp(length, 8, 64);
+    if (![includeUpper, includeLower, includeNumbers, includeSymbols].some(Boolean)) return;
     setResult(randomPassword(safeLength, includeUpper, includeLower, includeNumbers, includeSymbols));
   };
 
@@ -1230,14 +1191,15 @@ function PasswordTool() {
         </button>
         <CopyButton text={result} label="Copy Password" />
       </div>
-      <input className={inputClass} value={result} readOnly placeholder="Password" />
+      <input className={inputClass} value={result} aria-label="Result" readOnly placeholder="Password" />
       <div className={resultBox}>Strength: {strength}</div>
+      {!enabledTypes ? <p role="alert">Choose at least one character type.</p> : null}
     </ToolPanel>
   );
 }
 
 function HashTool() {
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState(useContext(SampleContext));
   const [result, setResult] = useState("");
   const [error, setError] = useState("");
   const [algorithm, setAlgorithm] = useState("SHA-256");
@@ -1270,13 +1232,13 @@ function HashTool() {
 
   return (
     <ToolPanel>
-      <textarea
+      <textarea aria-label="Input text"
         className={`${inputClass} min-h-32`}
         value={input}
         onChange={(event) => setInput(event.target.value)}
         placeholder="Text to hash"
       />
-      <select className={inputClass} value={algorithm} onChange={(event) => setAlgorithm(event.target.value)}>
+      <select className={inputClass} aria-label="Hash algorithm" value={algorithm} onChange={(event) => setAlgorithm(event.target.value)}>
         <option>SHA-256</option>
         <option>SHA-384</option>
         <option>SHA-512</option>
@@ -1288,13 +1250,13 @@ function HashTool() {
         <CopyButton text={result} label="Copy Hash" />
       </div>
       {error ? <div className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800">{error}</div> : null}
-      <textarea className={`${inputClass} min-h-32`} value={result} readOnly />
+      <textarea className={`${inputClass} min-h-32`} value={result} aria-label="Result" readOnly />
     </ToolPanel>
   );
 }
 
 function TimestampTool() {
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 16));
+  const [date, setDate] = useState(() => {const now = new Date(); return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);});
   const [timestamp, setTimestamp] = useState(() => Math.floor(Date.now() / 1000).toString());
 
   const safeDate = new Date(date);
@@ -1309,7 +1271,7 @@ function TimestampTool() {
       <Field label="Date and Time">
         <input type="datetime-local" className={inputClass} value={date} onChange={(event) => setDate(event.target.value)} />
       </Field>
-      <div className={resultBox}>Unix Timestamp: {timestampFromDate || "Enter a valid date"}</div>
+      <div className={resultBox}>Unix Timestamp: {timestampFromDate !== "" ? timestampFromDate : "Enter a valid date"}</div>
       <Field label="Unix Timestamp (seconds)">
         <input className={inputClass} value={timestamp} onChange={(event) => setTimestamp(event.target.value)} />
       </Field>
@@ -1328,7 +1290,8 @@ function RegexTool() {
   const run = () => {
     try {
       const regex = new RegExp(pattern, flags);
-      const matches = Array.from(text.matchAll(regex)).map(
+      const found = regex.global ? Array.from(text.matchAll(regex)) : [regex.exec(text)].filter((match): match is RegExpExecArray => Boolean(match));
+      const matches = found.map(
         (match, index) => `${index + 1}. ${JSON.stringify(match[0])} @ index ${match.index}`
       );
       setResult(matches.length ? matches.join("\n") : "No match found.");
@@ -1342,10 +1305,10 @@ function RegexTool() {
   return (
     <ToolPanel>
       <div className="grid gap-3 sm:grid-cols-2">
-        <input className={inputClass} value={pattern} onChange={(event) => setPattern(event.target.value)} placeholder="Pattern" />
-        <input className={inputClass} value={flags} onChange={(event) => setFlags(event.target.value)} placeholder="Flags" />
+        <input className={inputClass} aria-label="Pattern" value={pattern} onChange={(event) => setPattern(event.target.value)} placeholder="Pattern" />
+        <input className={inputClass} aria-label="Flags" value={flags} onChange={(event) => setFlags(event.target.value)} placeholder="Flags" />
       </div>
-      <textarea className={`${inputClass} min-h-32`} value={text} onChange={(event) => setText(event.target.value)} placeholder="Test text" />
+      <textarea aria-label="Input text" className={`${inputClass} min-h-32`} value={text} onChange={(event) => setText(event.target.value)} placeholder="Test text" />
       <div className="flex flex-wrap gap-2">
         <button type="button" onClick={run} className={primaryBtn}>
           Test Regex
@@ -1353,7 +1316,7 @@ function RegexTool() {
         <CopyButton text={result} label="Copy Matches" />
       </div>
       {error ? <div className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div> : null}
-      <textarea className={`${inputClass} min-h-32`} readOnly value={result} />
+      <textarea className={`${inputClass} min-h-32`} aria-label="Result" readOnly value={result} />
     </ToolPanel>
   );
 }
@@ -1810,7 +1773,7 @@ function UnitTool({ mode }: { mode: string }) {
 }
 
 function QrTool() {
-  const [text, setText] = useState("https://toolinger.com");
+  const [text, setText] = useState("https://subha760.github.io/toolbox-pro/");
   const [sizeRaw, setSizeRaw] = useState("600");
   const [qrSrc, setQrSrc] = useState("");
   const [error, setError] = useState("");
@@ -1822,6 +1785,7 @@ function QrTool() {
     }
     try {
       const size = clamp(Math.floor(Number(sizeRaw) || 600), 128, 1024);
+      const {default: QRCode} = await import("qrcode");
       const url = await QRCode.toDataURL(text.trim(), {
         width: size,
         margin: 1,
@@ -1971,6 +1935,7 @@ function NotepadTool() {
     }
 
     try {
+      const {PDFDocument, StandardFonts, rgb} = await import("pdf-lib");
       const pdf = await PDFDocument.create();
       const font = await pdf.embedFont(StandardFonts.Helvetica);
       let page = pdf.addPage([595, 842]);
@@ -2021,7 +1986,7 @@ function NotepadTool() {
 
   return (
     <ToolPanel>
-      <textarea
+      <textarea aria-label="Input text"
         className={`${inputClass} min-h-64`}
         value={text}
         onChange={(event) => setText(event.target.value)}
@@ -2066,7 +2031,7 @@ function NotepadTool() {
 }
 
 function SocialTool({ mode }: { mode: string }) {
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState(useContext(SampleContext));
   const [secondary, setSecondary] = useState("");
 
   const output = useMemo(() => {
@@ -2115,21 +2080,21 @@ function SocialTool({ mode }: { mode: string }) {
 
   return (
     <ToolPanel>
-      <textarea
+      <textarea aria-label="Input text"
         className={`${inputClass} min-h-36`}
         value={input}
         onChange={(event) => setInput(event.target.value)}
         placeholder="Enter draft content"
       />
       {(mode === "caption" || mode === "reel" || mode === "yt-template") && (
-        <textarea
+        <textarea aria-label="Input text"
           className={`${inputClass} min-h-24`}
           value={secondary}
           onChange={(event) => setSecondary(event.target.value)}
           placeholder="Optional supporting line"
         />
       )}
-      <textarea className={`${inputClass} min-h-44`} readOnly value={output} />
+      <textarea className={`${inputClass} min-h-44`} aria-label="Result" readOnly value={output} />
       <div className="flex flex-wrap gap-2">
         <CopyButton text={output} label="Copy Output" />
       </div>
@@ -2154,15 +2119,11 @@ function PdfTool({ mode }: { mode: string }) {
     };
   }, []);
 
-  const parsePages = (raw: string, total: number) =>
-    raw
-      .split(",")
-      .map((value) => Number(value.trim()) - 1)
-      .filter((value) => Number.isInteger(value) && value >= 0 && value < total)
-      .sort((a, b) => a - b);
+  const parsePages = parsePageSelection;
 
   const run = async () => {
     try {
+      const {PDFDocument, StandardFonts, rgb, degrees} = await import("pdf-lib");
       if (mode === "text-to-pdf") {
         if (!text.trim()) {
           setInfo("Please type content first.");
@@ -2196,16 +2157,21 @@ function PdfTool({ mode }: { mode: string }) {
           setInfo("Popup blocked. Allow popups to print PDF.");
           return;
         }
+        frame.opener = null;
+        const cleanDocument = new DOMParser().parseFromString(html, "text/html");
+        cleanDocument.querySelectorAll("script,iframe,object,embed,link,meta,base,form").forEach(node => node.remove());
+        cleanDocument.querySelectorAll("*").forEach(node => Array.from(node.attributes).forEach(attr => { if (attr.name.startsWith("on") || /^(javascript:|https?:|\/\/)/i.test(attr.value.trim())) node.removeAttribute(attr.name); }));
         frame.document.write(`
           <html>
             <head>
+              <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data: blob:">
               <title>Toolinger</title>
               <style>
                 body { font-family: system-ui, sans-serif; padding: 24px; color: #0f172a; }
                 img { max-width: 100%; }
               </style>
             </head>
-            <body>${html}</body>
+            <body>${cleanDocument.body.innerHTML}</body>
           </html>
         `);
         frame.document.close();
@@ -2258,7 +2224,7 @@ function PdfTool({ mode }: { mode: string }) {
 
       const source = await PDFDocument.load(await readAsArrayBuffer(first));
       const total = source.getPageCount();
-      const indexes = parsePages(pageInput, total);
+      const indexes = ["split", "extract-pages", "delete-pages"].includes(mode) ? parsePages(pageInput, total) : [];
 
       if (mode === "split" || mode === "extract-pages") {
         if (indexes.length === 0) {
@@ -2343,15 +2309,15 @@ function PdfTool({ mode }: { mode: string }) {
       }
 
       setInfo("Unsupported PDF mode.");
-    } catch {
-      setInfo("Unable to process this file. Please check your input.");
+    } catch (error) {
+      setInfo(error instanceof Error ? error.message : "Unable to process this file. Please check your input.");
     }
   };
 
   return (
     <ToolPanel>
       {mode === "text-to-pdf" ? (
-        <textarea
+        <textarea aria-label="Input text"
           className={`${inputClass} min-h-44`}
           value={text}
           onChange={(event) => setText(event.target.value)}
@@ -2359,7 +2325,7 @@ function PdfTool({ mode }: { mode: string }) {
         />
       ) : null}
       {mode === "html-to-pdf" ? (
-        <textarea
+        <textarea aria-label="Input text"
           className={`${inputClass} min-h-44`}
           value={html}
           onChange={(event) => setHtml(event.target.value)}
@@ -2371,6 +2337,7 @@ function PdfTool({ mode }: { mode: string }) {
           className={inputClass}
           type="file"
           accept="application/pdf"
+          aria-label="Choose PDF files"
           multiple={mode === "merge"}
           onChange={(event) => setFiles(Array.from(event.target.files ?? []))}
         />
@@ -2378,7 +2345,7 @@ function PdfTool({ mode }: { mode: string }) {
       {mode === "split" || mode === "extract-pages" || mode === "delete-pages" ? (
         <input
           className={inputClass}
-          value={pageInput}
+          aria-label="Page numbers or ranges" value={pageInput}
           onChange={(event) => setPageInput(event.target.value)}
           placeholder="Page numbers: 1,2,3"
         />
@@ -2386,13 +2353,13 @@ function PdfTool({ mode }: { mode: string }) {
       {mode === "rearrange-pages" ? (
         <input
           className={inputClass}
-          value={order}
+          aria-label="New page order" value={order}
           onChange={(event) => setOrder(event.target.value)}
           placeholder="New order: 3,1,2"
         />
       ) : null}
       {mode === "rotate" ? (
-        <select className={inputClass} value={angle} onChange={(event) => setAngle(event.target.value)}>
+        <select className={inputClass} aria-label="Rotation angle" value={angle} onChange={(event) => setAngle(event.target.value)}>
           <option value="90">90 degrees</option>
           <option value="180">180 degrees</option>
           <option value="270">270 degrees</option>
@@ -2510,6 +2477,7 @@ function ImageTool({ mode }: { mode: string }) {
       }
 
       if (mode === "image-to-pdf") {
+      const {PDFDocument} = await import("pdf-lib");
         const pdf = await PDFDocument.create();
         for (const file of files) {
           const embedded = await embedImageInPdf(pdf, file);
@@ -2760,6 +2728,7 @@ function ImageTool({ mode }: { mode: string }) {
           className={inputClass}
           type="file"
           accept="image/*"
+          aria-label="Choose image files"
           multiple={mode === "collage" || mode === "image-to-pdf"}
           onChange={(event) => setFiles(Array.from(event.target.files ?? []))}
         />
@@ -2886,11 +2855,11 @@ function ImageTool({ mode }: { mode: string }) {
 }
 
 const INDIA_PHOTO_PRESETS = {
-  passport: { label: "Indian Passport — 35 × 45 mm", width: 413, height: 531 },
+  passport: { label: "35 × 45 mm — common ID format", width: 413, height: 531 },
   pan: { label: "PAN application — 25 × 35 mm", width: 295, height: 413 },
-  aadhaar: { label: "Aadhaar document photo — 35 × 45 mm", width: 413, height: 531 },
-  uan: { label: "UAN / EPFO application — 35 × 45 mm", width: 413, height: 531 },
-  visa: { label: "Visa square — 51 × 51 mm", width: 600, height: 600 },
+  aadhaar: { label: "35 × 45 mm — document attachment", width: 413, height: 531 },
+  uan: { label: "35 × 45 mm — application attachment", width: 413, height: 531 },
+  visa: { label: "2 × 2 inch — square photo", width: 600, height: 600 },
 };
 
 function PassportTool() {
@@ -2903,7 +2872,9 @@ function PassportTool() {
   const [customHeight, setCustomHeight] = useState(531);
   const [zoom, setZoom] = useState(100);
   const [vertical, setVertical] = useState(50);
-  const [enhance, setEnhance] = useState(true);
+  const [enhance, setEnhance] = useState(false);
+  const [horizontal, setHorizontal] = useState(50);
+  const [guides, setGuides] = useState(true);
   const serviceStatus = "Free on-device AI. Your photo stays in this browser. Model files download on first use.";
   const pendingRequest = useRef<AbortController | null>(null);
   const photoUrls = useRef({ source: "", cutout: "" });
@@ -2923,12 +2894,15 @@ function PassportTool() {
     ? { label: "Custom", width: Math.min(4000, Math.max(100, Math.round(Number(customWidth)) || 100)), height: Math.min(4000, Math.max(100, Math.round(Number(customHeight)) || 100)) }
     : INDIA_PHOTO_PRESETS[format as keyof typeof INDIA_PHOTO_PRESETS];
 
+  useEffect(() => { setPreview(""); }, [background, format, customWidth, customHeight, zoom, vertical, horizontal, enhance]);
+
   const selectFile = (next: File | null) => {
     if (next) {
       try { validatePhoto(next); } catch (error) { setStatus((error as Error).message); return; }
     }
     if (sourceUrl) URL.revokeObjectURL(sourceUrl);
     if (cutoutUrl) URL.revokeObjectURL(cutoutUrl);
+    setZoom(100); setVertical(50); setHorizontal(50);
     setFile(next);
     setCutoutUrl("");
     setPreview("");
@@ -2980,18 +2954,12 @@ function PassportTool() {
       context.imageSmoothingQuality = "high";
       context.fillStyle = background;
       context.fillRect(0, 0, output.width, output.height);
-      const base = Math.max(output.width / image.width, output.height / image.height);
-      const scale = base * (zoom / 100);
-      const drawWidth = image.width * scale;
-      const drawHeight = image.height * scale;
-      const dx = (output.width - drawWidth) / 2;
-      const travel = Math.max(0, drawHeight - output.height);
-      const dy = -(travel * vertical) / 100;
+      const {dx, dy, drawWidth, drawHeight} = portraitLayout(image.width, image.height, output.width, output.height, zoom, horizontal, vertical);
       context.filter = enhance ? "brightness(1.035) contrast(1.07) saturate(1.035)" : "none";
       context.drawImage(image, dx, dy, drawWidth, drawHeight);
       context.filter = "none";
       setPreview(output.toDataURL("image/png"));
-      setStatus(`${preset.label} created at ${preset.width} × ${preset.height}px.`);
+      setStatus(`${preset.label} created at ${preset.width} × ${preset.height}px.${image.width < preset.width || image.height < preset.height ? " Source enlarged; use a higher-resolution portrait for a sharper print." : ""}`);
     } catch {
       setStatus("Could not create the photo. Please try a JPG, PNG or WebP portrait.");
     } finally {
@@ -3019,11 +2987,28 @@ function PassportTool() {
     }
   };
 
+  const downloadSheet = async () => {
+    try {
+      const {PDFDocument} = await import("pdf-lib");
+      const photo = await loadImage(preview);
+      const layout = sheetLayout(photo.width, photo.height);
+      if (!layout.positions.length) throw new Error("This custom photo is too large for a 4 × 6 inch sheet at 300 DPI.");
+      const pdf = await PDFDocument.create();
+      const page = pdf.addPage([288, 432]);
+      const image = await pdf.embedPng(await (await fetch(preview)).arrayBuffer());
+      for (const {x, y} of layout.positions) page.drawImage(image, {x: x * .24, y: 432 - (y + photo.height) * .24, width: photo.width * .24, height: photo.height * .24});
+      const bytes = await pdf.save();
+      downloadBlob(new Blob([toArrayBuffer(bytes)], {type: "application/pdf"}), "toolinger-4x6-print.pdf");
+      setStatus(`${layout.positions.length} photos on a 4 × 6 inch PDF. Print at actual size / 100%, without fit-to-page.`);
+    } catch (error) { setStatus(error instanceof Error ? error.message : "Unable to export print sheet."); }
+  };
+
   return (
     <ToolPanel>
-      <div className="rounded-2xl border border-dashed border-violet-300 bg-violet-50 p-4">
+      <div onDragOver={e => e.preventDefault()} onDrop={e => {e.preventDefault(); if (!busy) selectFile(e.dataTransfer.files?.[0] ?? null);}} className="rounded-2xl border border-dashed border-violet-300 bg-violet-50 p-4">
         <div className="mb-2 font-semibold text-slate-900">1. Upload portrait</div>
-        <input disabled={busy} className={inputClass} type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => selectFile(event.target.files?.[0] ?? null)} />
+        <p className="mb-3 text-xs text-slate-600">Choose a photo or drop it here. JPG, PNG or WebP, up to 10 MB.</p>
+        <input aria-label="Choose portrait" disabled={busy} className={inputClass} type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => selectFile(event.target.files?.[0] ?? null)} />
         {sourceUrl ? <img src={sourceUrl} alt="Original portrait" className="mx-auto mt-3 max-h-64 rounded-xl border bg-white object-contain" /> : null}
       </div>
       <div className="rounded-2xl border border-slate-200 bg-white p-4">
@@ -3037,7 +3022,7 @@ function PassportTool() {
         <p className="mt-2 text-xs text-slate-500">Lightweight portrait AI • no account or API key. Best for one clearly visible person. Fine hair and complex edges may need correction; review before downloading.</p>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="Indian document size">
+        <Field label="Photo dimensions">
           <select className={inputClass} value={format} onChange={(event) => setFormat(event.target.value)}>
             {Object.entries(INDIA_PHOTO_PRESETS).map(([value, item]) => <option key={value} value={value}>{item.label}</option>)}
             <option value="custom">Custom pixel size</option>
@@ -3056,16 +3041,21 @@ function PassportTool() {
         <Field label={`Zoom — ${zoom}%`}><input className="w-full accent-violet-600" type="range" min="100" max="180" value={zoom} onChange={(e) => setZoom(Number(e.target.value))} /></Field>
         <Field label="Vertical position"><input className="w-full accent-violet-600" type="range" min="0" max="100" value={vertical} onChange={(e) => setVertical(Number(e.target.value))} /></Field>
       </div>
+      <Field label="Custom background colour"><input type="color" value={background} onChange={e => setBackground(e.target.value)} className="h-11 w-full rounded-lg" /></Field>
+      <Field label="Horizontal position"><input className="w-full accent-violet-600" type="range" min="0" max="100" value={horizontal} onChange={e => setHorizontal(Number(e.target.value))} /></Field>
       <label className="flex items-center gap-2 text-sm font-medium text-slate-700"><input type="checkbox" checked={enhance} onChange={(e) => setEnhance(e.target.checked)} className="h-5 w-5 accent-violet-600" /> Auto-enhance brightness, colour and contrast</label>
       <div className="flex flex-wrap gap-2">
         <button type="button" disabled={busy || !file} onClick={build} className={`${primaryBtn} disabled:opacity-50`}>
           Create Studio Photo
         </button>
       </div>
-      <div className={resultBox}>{status}</div>
+      <div className={resultBox} role="status" aria-live="polite">{status}</div>
+      <p className="text-sm text-slate-600">Sizes are templates, not approval checks. Confirm dimensions, background and digital-editing rules with your issuing authority. Aadhaar enrolment requires a live photo. Keep enhancement off for official submissions.</p>
+      {sourceUrl && !cutoutUrl ? <p className="text-sm text-slate-600">Background colours only replace transparent areas after removal; your original background stays visible until then.</p> : null}
       {preview ? (
         <div className="space-y-3">
-          <img src={preview} alt="Passport preview" className="mx-auto w-full max-w-64 rounded-xl border border-slate-200" />
+          <div className="portrait-preview"><img src={preview} alt="Passport preview" />{guides ? <div className="portrait-guides" aria-hidden="true"><span /></div> : null}</div>
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={guides} onChange={e => setGuides(e.target.checked)} /> Show framing guides (excluded from downloads)</label>
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
@@ -3078,6 +3068,7 @@ function PassportTool() {
             >
               Download PNG
             </button>
+            <button type="button" className={secondaryBtn} onClick={downloadSheet}>Download 4 × 6 print PDF</button>
             <button type="button" className={secondaryBtn} onClick={downloadJpg}>
               Download JPG
             </button>
@@ -3097,7 +3088,7 @@ function getLocalAiPipeline(task: string, model: string) {
       env.allowLocalModels = false;
       env.useBrowserCache = true;
       return pipeline(task as any, model, { dtype: "q8" });
-    }));
+    }).catch(error => {localAiPipelines.delete(key); throw error;}));
   }
   return localAiPipelines.get(key)!;
 }
@@ -3116,13 +3107,14 @@ function rowsFromTensor(tensor: any): number[][] {
 }
 
 function LocalAiTool({ mode }: { mode: string }) {
-  const [text, setText] = useState("");
+  const [text, setText] = useState(useContext(SampleContext));
   const [second, setSecond] = useState("");
   const [result, setResult] = useState("Your result will appear here.");
   const [busy, setBusy] = useState(false);
 
   const run = async () => {
     if (!text.trim()) { setResult("Enter some text first."); return; }
+    if (mode === "similarity" && !second.trim()) { setResult("Enter both passages."); return; }
     setBusy(true);
     setResult("Loading the compact model on this device. The first run may take a minute; later runs use the browser cache.");
     try {
@@ -3160,112 +3152,331 @@ function LocalAiTool({ mode }: { mode: string }) {
     } finally { setBusy(false); }
   };
 
-  return <ToolPanel title="Private on-device AI">
+  return <ToolPanel>
     <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">Your text stays in this browser. The model downloads once and is cached locally. No API key or account is needed.</div>
-    <textarea className={`${inputClass} min-h-44`} value={text} onChange={(event) => setText(event.target.value)} placeholder={mode === "similarity" ? "First passage" : "Paste text"} />
-    {mode === "similarity" ? <textarea className={`${inputClass} min-h-32`} value={second} onChange={(event) => setSecond(event.target.value)} placeholder="Second passage" /> : null}
+    <textarea aria-label="Input text" className={`${inputClass} min-h-44`} value={text} onChange={(event) => setText(event.target.value)} placeholder={mode === "similarity" ? "First passage" : "Paste text"} />
+    {mode === "similarity" ? <textarea aria-label="Input text" className={`${inputClass} min-h-32`} value={second} onChange={(event) => setSecond(event.target.value)} placeholder="Second passage" /> : null}
     <button type="button" className={primaryBtn} onClick={run} disabled={busy}>{busy ? "Running locally…" : "Run local AI"}</button>
     <div className={`${resultBox} whitespace-pre-wrap`} aria-live="polite">{result}</div>
   </ToolPanel>;
 }
 
+const CATEGORY_ICONS: Record<string, string> = {
+  image: "image",
+  pdf: "file",
+  text: "text",
+  document: "file",
+  developer: "code",
+  health: "heart",
+  finance: "chart",
+  converter: "swap",
+  facebook: "chat",
+  instagram: "image",
+  youtube: "play",
+  ai: "spark",
+  utility: "grid",
+};
+function Icon({ name = "grid", size = 20 }: { name?: string; size?: number }) {
+  const paths: Record<string, React.ReactNode> = {
+    search: (
+      <>
+        <circle cx="10.5" cy="10.5" r="6.5" />
+        <path d="m16 16 4 4" />
+      </>
+    ),
+    arrow: <path d="M5 12h14m-6-6 6 6-6 6" />,
+    star: (
+      <path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9Z" />
+    ),
+    grid: (
+      <>
+        <rect x="3" y="3" width="7" height="7" rx="2" />
+        <rect x="14" y="3" width="7" height="7" rx="2" />
+        <rect x="3" y="14" width="7" height="7" rx="2" />
+        <rect x="14" y="14" width="7" height="7" rx="2" />
+      </>
+    ),
+    image: (
+      <>
+        <rect x="3" y="3" width="18" height="18" rx="3" />
+        <circle cx="8" cy="8" r="1.5" />
+        <path d="m3 17 6-6 4 4 3-3 5 5" />
+      </>
+    ),
+    file: (
+      <>
+        <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9Z" />
+        <path d="M14 3v6h6M8 13h8m-8 4h6" />
+      </>
+    ),
+    text: (
+      <>
+        <path d="M4 5h16M12 5v14m-4 0h8" />
+      </>
+    ),
+    code: <path d="m8 6-6 6 6 6m8-12 6 6-6 6m-3-15-2 18" />,
+    heart: (
+      <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z" />
+    ),
+    chart: (
+      <>
+        <path d="M4 3v18h17M8 16l4-5 4 2 5-8" />
+      </>
+    ),
+    swap: <path d="M3 7h18m-4-4 4 4-4 4M21 17H3m4-4-4 4 4 4" />,
+    chat: <path d="M21 11a9 9 0 0 1-9 9H3l2-5a9 9 0 1 1 16-4Z" />,
+    play: (
+      <>
+        <rect x="3" y="4" width="18" height="16" rx="4" />
+        <path d="m10 8 6 4-6 4Z" />
+      </>
+    ),
+    spark: (
+      <>
+        <path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5Z" />
+      </>
+    ),
+    moon: <path d="M21 13a9 9 0 0 1-10-10A9 9 0 1 0 21 13Z" />,
+    sun: (
+      <>
+        <circle cx="12" cy="12" r="4" />
+        <path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" />
+      </>
+    ),
+    close: <path d="m6 6 12 12M6 18 18 6" />,
+    shield: (
+      <>
+        <path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6Z" />
+        <path d="m8 12 3 3 5-6" />
+      </>
+    ),
+    link: (
+      <>
+        <path d="m10 13 4-4m-6 7-1 1a4 4 0 0 1-6-6l4-4a4 4 0 0 1 6 0m2 0 1-1a4 4 0 0 1 6 6l-4 4a4 4 0 0 1-6 0" />
+      </>
+    ),
+    reset: (
+      <>
+        <path d="M3 10a9 9 0 1 1 2 8M3 3v7h7" />
+      </>
+    ),
+  };
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {paths[name] ?? paths.grid}
+    </svg>
+  );
+}
+function readPreference<T>(key: string, fallback: T): T {
+  try {
+    const value = localStorage.getItem(key);
+    return value ? JSON.parse(value) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+function savePreference(key: string, value: unknown) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    /* Storage is optional. */
+  }
+}
+function Dialog({
+  title,
+  children,
+  close,
+  drawer = false,
+}: {
+  title: string;
+  children: React.ReactNode;
+  close: () => void;
+  drawer?: boolean;
+}) {
+  const ref = useRef<HTMLDialogElement>(null);
+  const id = useId();
+  useEffect(() => {
+    const dialog = ref.current;
+    dialog?.showModal();
+    return () => dialog?.close();
+  }, []);
+  return (
+    <dialog
+      ref={ref}
+      className={drawer ? "site-dialog drawer-dialog" : "site-dialog"}
+      aria-labelledby={id}
+      onCancel={close}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) close();
+      }}
+    >
+      <div className="dialog-heading">
+        <h2 id={id}>{title}</h2>
+        <button
+          autoFocus
+          className="icon-button"
+          aria-label="Close dialog"
+          onClick={close}
+        >
+          <Icon name="close" />
+        </button>
+      </div>
+      {children}
+    </dialog>
+  );
+}
+class ToolBoundary extends React.Component<
+  { children: React.ReactNode },
+  { failed: boolean }
+> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  render() {
+    return this.state.failed ? (
+      <div className="empty-state" role="alert">
+        <h2>This tool could not open.</h2>
+        <p>Reset the workspace or try another tool.</p>
+      </div>
+    ) : (
+      this.props.children
+    );
+  }
+}
+function sampleFor(tool: ToolConfig) {
+  if (tool.engine === "json-tool")
+    return '{"project":"Toolinger","tools":["photo","pdf"],"free":true}';
+  if (tool.engine === "base64")
+    return tool.mode === "decode"
+      ? "SGVsbG8sIFRvb2xpbmdlciE="
+      : "Hello, Toolinger!";
+  if (tool.engine === "url-encode")
+    return tool.mode === "decode" ? "Hello%20Toolinger%21" : "Hello Toolinger!";
+  if (tool.mode === "html-format")
+    return "<section><h1>Hello Toolinger</h1><p>Make everyday tasks easier.</p></section>";
+  if (tool.mode === "css-format") return "body{color:#24735c;margin:0;}";
+  if (tool.mode === "js-format")
+    return 'const tools=["photo","pdf"];tools.forEach(tool=>console.log(tool));';
+  if (tool.engine === "text-lines") return "Orange\nApple\nOrange\nBanana";
+  return "Hello, Toolinger! Small tasks, sorted.\nTry a tool and make your day a little easier.";
+}
 function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const [expandedCategories, setExpandedCategories] = useState<Record<CategoryId, boolean>>({
-    image: true,
-    pdf: false,
-    text: false,
-    document: false,
-    developer: false,
-    health: false,
-    finance: false,
-    converter: false,
-    facebook: false,
-    instagram: false,
-    youtube: false,
-    ai: false,
-    utility: false,
+  const [category, setCategory] = useState("all");
+  const [activeToolId, setActiveToolId] = useState(() =>
+    location.hash.replace(/^#\/?/, ""),
+  );
+  const [legalPage, setLegalPage] = useState<string | null>(null);
+  const [theme, setTheme] = useState(() =>
+    readPreference(
+      "toolinger-theme",
+      matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light",
+    ),
+  );
+  const [favourites, setFavourites] = useState<string[]>(() => {
+    const value = readPreference("toolinger-favourites", []);
+    return Array.isArray(value)
+      ? value.filter((id) => typeof id === "string")
+      : [];
   });
-  const [activeToolId, setActiveToolId] = useState("qr-code-generator");
-  const [legalPage, setLegalPage] = useState<LegalPage | null>(null);
-  const [consent, setConsent] = useState<string | null>(() => {
-    try {
-      return localStorage.getItem("toolinger-consent");
-    } catch {
-      return null;
-    }
+  const [recent, setRecent] = useState<string[]>(() => {
+    const value = readPreference("toolinger-recent", []);
+    return Array.isArray(value)
+      ? value.filter((id) => typeof id === "string")
+      : [];
   });
-
-  const workspaceRef = useRef<HTMLElement | null>(null);
-
+  const [reset, setReset] = useState(0);
+  const [sampleTool, setSampleTool] = useState("");
+  const [notice, setNotice] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
+  const activeTool = TOOL_LIST.find((tool) => tool.id === activeToolId);
+  const tools = TOOL_LIST.filter(
+    (tool) =>
+      (category === "all" ||
+        (category === "favourites"
+          ? favourites.includes(tool.id)
+          : tool.category === category)) &&
+      `${tool.name} ${tool.description} ${tool.keywords.join(" ")} ${CATEGORY_LABELS[tool.category]}`
+        .toLowerCase()
+        .includes(search.trim().toLowerCase()),
+  );
   useEffect(() => {
-    document.title = "Toolinger - 120+ Free Online Tools";
-    (window as Window & { TOOLINGER_CONFIG?: typeof TOOLINGER_CONFIG }).TOOLINGER_CONFIG = TOOLINGER_CONFIG;
-  }, []);
-
+    document.documentElement.dataset.theme = theme;
+    savePreference("toolinger-theme", theme);
+  }, [theme]);
   useEffect(() => {
-    document.body.style.overflow = menuOpen ? "hidden" : "";
-    return () => {
-      document.body.style.overflow = "";
+    savePreference("toolinger-favourites", favourites);
+  }, [favourites]);
+  useEffect(() => {
+    savePreference("toolinger-recent", recent);
+  }, [recent]);
+  useEffect(() => {
+    document.title = activeTool
+      ? `${activeTool.name} — Toolinger`
+      : "Toolinger — Your everyday toolbox";
+  }, [activeTool]);
+  useEffect(() => {
+    const handler = () => {
+      setActiveToolId(location.hash.replace(/^#\/?/, ""));
+      setReset(0);
+      window.scrollTo({ top: 0 });
     };
-  }, [menuOpen]);
-
+    window.addEventListener("hashchange", handler);
+    return () => window.removeEventListener("hashchange", handler);
+  }, []);
+  useEffect(() => {
+    if (activeTool)
+      setRecent((current) =>
+        [activeTool.id, ...current.filter((id) => id !== activeTool.id)].slice(
+          0,
+          6,
+        ),
+      );
+  }, [activeToolId]);
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setMenuOpen(false);
-        setLegalPage(null);
+      if ((event.ctrlKey || event.metaKey) && event.key === "k") {
+        event.preventDefault();
+        searchRef.current?.focus();
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, []);
-
-  const navigationManager = useMemo(
-    () => ({
-      open: () => setMenuOpen(true),
-      close: () => setMenuOpen(false),
-      toggle: () => setMenuOpen((previous) => !previous),
-    }),
-    []
-  );
-
-  const toolsById = useMemo(() => {
-    const map = new Map<string, ToolConfig>();
-    TOOL_LIST.forEach((tool) => {
-      map.set(tool.id, tool);
-    });
-    return map;
-  }, []);
-
-  const activeTool = toolsById.get(activeToolId) ?? TOOL_LIST[0]!;
-
-  const featuredTools = useMemo(
-    () => FEATURED_TOOL_IDS.map((id) => toolsById.get(id)).filter((tool): tool is ToolConfig => Boolean(tool)),
-    [toolsById]
-  );
-
-  const categories = useMemo(() => {
-    const grouping = new Map<CategoryId, ToolConfig[]>();
-    TOOL_LIST.forEach((tool) => {
-      const current = grouping.get(tool.category) ?? [];
-      current.push(tool);
-      grouping.set(tool.category, current);
-    });
-    return grouping;
-  }, []);
-
-  const searchResults = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return [];
-    return TOOL_LIST.filter((tool) => {
-      const category = CATEGORY_LABELS[tool.category].toLowerCase();
-      const keywords = tool.keywords.join(" ").toLowerCase();
-      return tool.name.toLowerCase().includes(q) || category.includes(q) || keywords.includes(q);
-    }).slice(0, 10);
-  }, [search]);
-
+  useEffect(() => {
+    if (!notice) return;
+    const timer = window.setTimeout(() => setNotice(""), 3000);
+    return () => clearTimeout(timer);
+  }, [notice]);
+  const openTool = (id: string) => {
+    location.hash = `/${id}`;
+    setMenuOpen(false);
+    setSearch("");
+    window.scrollTo({ top: 0 });
+  };
+  const home = () => {
+    location.hash = "";
+    setSearch("");
+    setCategory("all");
+  };
+  const toggleFavourite = (id: string) =>
+    setFavourites((current) =>
+      current.includes(id)
+        ? current.filter((item) => item !== id)
+        : [...current, id],
+    );
   const renderActiveTool = () => {
     if (!activeTool) return null;
     switch (activeTool.engine) {
@@ -3331,401 +3542,537 @@ function App() {
         return null;
     }
   };
-
-  const openTool = (toolId: string) => {
-    setActiveToolId(toolId);
-    navigationManager.close();
-    requestAnimationFrame(() => {
-      workspaceRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
-  };
-
-  const legalContent: Record<LegalPage, string> = {
-    About:
-      "Toolinger is a browser-first toolbox designed to provide fast, practical tools for everyday digital work across images, PDFs, text, development, health, finance, conversion and social media helper workflows.",
-    "Privacy Policy":
-      "Toolinger processes many actions directly in your browser. We store minimal local preferences such as consent choices and optional notepad content. We do not require account sign-up for basic use. If advertising is enabled in the future, additional technologies may apply.",
-    "Cookie Policy":
-      "Toolinger uses essential browser storage for functionality including consent and local settings. Advertising cookies or similar technologies may be introduced only when ads are enabled through configuration.",
-    "Terms and Conditions":
-      "By using Toolinger, you agree to use the service responsibly and lawfully. Tool outputs are provided as-is for convenience and should be reviewed before official or high-risk use.",
-    Disclaimer:
-      "Toolinger provides utility calculations and processing tools for informational and productivity purposes. Health and financial calculators are estimates and are not professional advice.",
-    Contact:
-      "Toolinger Support\nFor support, questions, feedback or issues:\nlootchaser2026@gmail.com",
-  };
-
-  return (
-    <div className="min-h-screen overflow-x-hidden bg-gradient-to-br from-[#f7faff] via-white to-[#eef2ff] text-slate-900">
-      <style>{`
-        @keyframes coinFlip {
-          from { transform: rotateY(0); }
-          to { transform: rotateY(var(--coin-end)); }
-        }
-
-        .coin {
-          position: relative;
-          width: 96px;
-          height: 96px;
-          transform-style: preserve-3d;
-          margin: 18px auto;
-        }
-
-        .coin-face {
-          position: absolute;
-          inset: 0;
-          display: grid;
-          place-items: center;
-          font-size: 2.5rem;
-          font-weight: 900;
-          border-radius: 9999px;
-          backface-visibility: hidden;
-          box-shadow: inset 0 0 0 8px rgba(255,255,255,0.25);
-        }
-
-        .coin-head {
-          background: radial-gradient(circle at 30% 30%, #fde68a, #f59e0b);
-          color: #78350f;
-        }
-
-        .coin-tail {
-          background: radial-gradient(circle at 30% 30%, #e2e8f0, #94a3b8);
-          color: #1e293b;
-          transform: rotateY(180deg);
-        }
-
-        .coin-flipping {
-          animation: coinFlip 1.4s ease-in-out;
-        }
-
-        .coin-heads { --coin-end: 1800deg; transform: rotateY(0deg); }
-        .coin-tails { --coin-end: 1980deg; transform: rotateY(180deg); }
-
-        @keyframes rise {
-          from { opacity: 0; transform: translateY(12px); }
-          to { opacity: 1; transform: none; }
-        }
-
-        .motion-rise {
-          animation: rise 0.25s ease-out;
-        }
-
-        html {
-          scroll-behavior: smooth;
-        }
-      `}</style>
-
-      <header className="sticky top-0 z-40 border-b border-slate-200/70 bg-white/85 backdrop-blur-xl">
-        <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 px-3 py-3 sm:px-5 md:flex-row md:items-center">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              aria-label="Open tool categories"
-              aria-expanded={menuOpen}
-              onClick={navigationManager.toggle}
-              className="inline-flex h-11 w-11 flex-col items-center justify-center gap-1 rounded-xl border border-slate-200 bg-white shadow-sm"
-            >
-              <span className="sr-only">Menu</span>
-              <span className="block h-0.5 w-5 rounded bg-slate-900" />
-              <span className="block h-0.5 w-5 rounded bg-slate-900" />
-              <span className="block h-0.5 w-5 rounded bg-slate-900" />
-            </button>
-            <img src="./toolinger-logo.svg" alt="Toolinger logo" className="h-11 w-11 rounded-xl" />
-            <div className="min-w-0">
-              <div className="truncate text-lg font-bold tracking-tight">Toolinger</div>
-              <div className="truncate text-xs text-slate-600">120+ Free Online Tools</div>
-            </div>
-          </div>
-
-          <div className="relative w-full md:ml-auto md:w-full md:max-w-xs">
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              className={`${inputClass} pl-10`}
-              placeholder="Search tools"
-            />
-            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-500">
-              Go
-            </span>
-            {searchResults.length > 0 ? (
-              <div className="absolute left-0 right-0 top-[110%] z-50 max-h-72 overflow-auto rounded-xl border border-slate-200 bg-white p-1 shadow-xl">
-                {searchResults.map((tool) => (
-                  <button
-                    key={tool.id}
-                    type="button"
-                    onClick={() => {
-                      openTool(tool.id);
-                      setSearch("");
-                    }}
-                    className="w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-slate-100"
-                  >
-                    <div className="font-semibold text-slate-900">{tool.name}</div>
-                    <div className="text-xs text-slate-500">{CATEGORY_LABELS[tool.category]}</div>
-                  </button>
-                ))}
-              </div>
-            ) : null}
-          </div>
-        </div>
-      </header>
-
-      <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-[340px] max-w-[90vw] transform flex-col bg-white shadow-2xl transition-transform duration-200 ${
-          menuOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-        aria-hidden={!menuOpen}
+  const card = (tool: ToolConfig) => (
+    <article className="catalog-card" key={tool.id}>
+      <button className="card-open" onClick={() => openTool(tool.id)}>
+        <span className={`tool-icon category-${tool.category}`}>
+          <Icon name={CATEGORY_ICONS[tool.category]} size={23} />
+        </span>
+        <span className="card-category">
+          {CATEGORY_LABELS[tool.category].replace(" Tools", "")}
+        </span>
+        <h3>{tool.name}</h3>
+        <p>{tool.description}</p>
+        <span className="card-action">
+          Open tool <Icon name="arrow" size={16} />
+        </span>
+      </button>
+      <button
+        className={`card-favourite icon-button ${favourites.includes(tool.id) ? "is-saved" : ""}`}
+        aria-label={`${favourites.includes(tool.id) ? "Unsave" : "Save"} ${tool.name}`}
+        aria-pressed={favourites.includes(tool.id)}
+        onClick={() => toggleFavourite(tool.id)}
       >
-        <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
-          <div className="font-semibold text-slate-900">Tool Categories</div>
-          <button type="button" className={secondaryBtn} onClick={navigationManager.close}>
-            Close
+        <Icon name="star" size={18} />
+      </button>
+    </article>
+  );
+  return (
+    <div className="site-app">
+      <a className="skip-link" href="#main-content" onClick={event => {event.preventDefault(); const main = document.getElementById("main-content"); main?.focus(); main?.scrollIntoView();}}>
+        Skip to content
+      </a>
+      <header className="site-header">
+        <div className="header-inner">
+          <button
+            onClick={home}
+            className="brand-button"
+            aria-label="Toolinger home"
+          >
+            <img src="./toolinger-logo.svg" alt="" width="36" height="36" />
+            <span>
+              toolinger<span className="brand-dot">.</span>
+            </span>
+          </button>
+          <nav className="header-nav" aria-label="Main navigation">
+            <button onClick={home} className={!activeTool ? "nav-active" : ""}>
+              All tools
+            </button>
+            <button onClick={() => openTool("passport-photo-maker")}>
+              Photo studio
+            </button>
+          </nav>
+          <div className="header-search">
+            <Icon name="search" size={18} />
+            <input
+              ref={searchRef}
+              type="search"
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                if (activeTool) location.hash = "";
+              }}
+              placeholder="Find a tool…"
+              aria-label="Search tools"
+            />
+            <kbd>⌘ K</kbd>
+          </div>
+          <button
+            className="icon-button theme-toggle"
+            onClick={() =>
+              setTheme((current) => (current === "dark" ? "light" : "dark"))
+            }
+            aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
+          >
+            <Icon name={theme === "dark" ? "sun" : "moon"} />
+          </button>
+          <button
+            className="icon-button mobile-menu"
+            onClick={() => setMenuOpen(true)}
+            aria-label="Browse categories"
+          >
+            <Icon />
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto p-3">
-          {(Object.keys(CATEGORY_LABELS) as CategoryId[]).map((categoryId) => (
-            <div key={categoryId} className="mb-3 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-              <button
-                type="button"
-                onClick={() => setExpandedCategories((current) => ({ ...current, [categoryId]: !current[categoryId] }))}
-                className="flex w-full items-center justify-between px-3 py-3 text-left text-sm font-bold text-slate-800"
-              >
-                {CATEGORY_LABELS[categoryId]}
-                <span>{expandedCategories[categoryId] ? "v" : ">"}</span>
-              </button>
-              {expandedCategories[categoryId] ? (
-                <div className="border-t border-slate-100 p-2">
-                  {(categories.get(categoryId) ?? []).map((tool) => (
+      </header>
+      <main id="main-content" tabIndex={-1}>
+        {activeTool ? (
+          <div className="workspace-layout page-width">
+            <div className="workspace-breadcrumb">
+              <button onClick={home}>All tools</button>
+              <span>/</span>
+              <span>{CATEGORY_LABELS[activeTool.category]}</span>
+            </div>
+            <div className="workspace-title">
+              <div>
+                <span className="eyeline">YOUR WORKSPACE</span>
+                <h1>{activeTool.name}</h1>
+                <p>{activeTool.description}</p>
+              </div>
+              <span className="privacy-badge">
+                <Icon name="shield" size={16} /> On your device
+              </span>
+            </div>
+            <div className="workspace-grid">
+              <section className="workspace-tool" aria-label={activeTool.name}>
+                <div className="workspace-toolbar">
+                  <button
+                    className={`toolbar-button ${favourites.includes(activeTool.id) ? "is-saved" : ""}`}
+                    onClick={() => toggleFavourite(activeTool.id)}
+                    aria-pressed={favourites.includes(activeTool.id)}
+                  >
+                    <Icon name="star" size={16} />
+                    {favourites.includes(activeTool.id) ? "Saved" : "Save tool"}
+                  </button>
+                  <button
+                    className="toolbar-button"
+                    onClick={async () => {
+                      try {
+                        await copyToClipboard(location.href);
+                        setNotice("Tool link copied");
+                      } catch {
+                        setNotice("Select the address bar to copy this link");
+                      }
+                    }}
+                  >
+                    <Icon name="link" size={16} /> Share link
+                  </button>
+                  <button
+                    className="toolbar-button"
+                    onClick={() => {
+                      setSampleTool("");
+                      setReset((current) => current + 1);
+                    }}
+                  >
+                    <Icon name="reset" size={16} /> Reset
+                  </button>
+                </div>
+                {[
+                  "text-transform",
+                  "text-analysis",
+                  "text-lines",
+                  "json-tool",
+                  "base64",
+                  "url-encode",
+                  "social",
+                ].includes(activeTool.engine) ? (
+                  <div className="sample-bar">
+                    <span>Just exploring?</span>
                     <button
-                      key={tool.id}
-                      type="button"
-                      onClick={() => openTool(tool.id)}
-                      className={`block w-full px-3 py-2 text-left text-sm transition hover:bg-violet-50 ${
-                        activeTool?.id === tool.id ? "font-semibold text-violet-700" : "text-slate-700"
-                      }`}
+                      onClick={() => {
+                        setSampleTool(activeTool.id);
+                        setReset((current) => current + 1);
+                      }}
                     >
-                      {tool.name}
+                      Try an example <Icon name="arrow" size={14} />
+                    </button>
+                  </div>
+                ) : null}
+                <SampleContext.Provider
+                  value={
+                    sampleTool === activeTool.id ? sampleFor(activeTool) : ""
+                  }
+                >
+                  <ToolBoundary key={`${activeTool.id}-${reset}`}>
+                    <div key={activeTool.id} data-testid="tool-content">
+                      {renderActiveTool()}
+                    </div>
+                  </ToolBoundary>
+                </SampleContext.Provider>
+              </section>
+              <aside className="workspace-help">
+                <h2>A little guidance</h2>
+                <ol>
+                  <li>Enter your content or choose a file.</li>
+                  <li>Adjust the options and run the tool.</li>
+                  <li>Review, then copy or download.</li>
+                </ol>
+                <div className="help-note">
+                  <Icon name="shield" />
+                  <p>
+                    Your inputs stay in this browser. AI tools download models
+                    on first use.
+                  </p>
+                </div>
+                {["health", "finance"].includes(activeTool.category) ? (
+                  <p className="help-warning">
+                    Calculations are estimates. Check important decisions with a
+                    qualified professional.
+                  </p>
+                ) : null}
+                <button
+                  className="text-link"
+                  onClick={() => setLegalPage("contact")}
+                >
+                  Report an issue <Icon name="arrow" size={15} />
+                </button>
+                <h2 className="related-heading">More to explore</h2>
+                {TOOL_LIST.filter(
+                  (t) =>
+                    t.category === activeTool.category &&
+                    t.id !== activeTool.id,
+                )
+                  .slice(0, 4)
+                  .map((t) => (
+                    <button
+                      className="related-tool"
+                      key={t.id}
+                      onClick={() => openTool(t.id)}
+                    >
+                      {t.name}
+                      <Icon name="arrow" size={15} />
                     </button>
                   ))}
-                </div>
-              ) : null}
-            </div>
-          ))}
-        </div>
-      </aside>
-
-      <button
-        type="button"
-        aria-label="Close menu"
-        tabIndex={menuOpen ? 0 : -1}
-        onClick={navigationManager.close}
-        className={`fixed inset-0 z-40 bg-slate-950/40 backdrop-blur-sm transition-opacity duration-200 ${
-          menuOpen ? "opacity-100" : "pointer-events-none opacity-0"
-        }`}
-      />
-
-      <main>
-        <section className="relative isolate overflow-hidden border-b border-slate-200 bg-gradient-to-br from-white via-[#eef4ff] to-[#f5f3ff]">
-          <div className="absolute -left-24 top-10 h-72 w-72 rounded-full bg-violet-300/30 blur-3xl" />
-          <div className="absolute -right-24 bottom-10 h-72 w-72 rounded-full bg-cyan-300/30 blur-3xl" />
-          <div className="relative mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-            <p className="mb-3 text-sm font-semibold tracking-[0.15em] text-blue-700">TOOLINGER | 120+ ONLINE TOOLS</p>
-            <h1 className="max-w-3xl text-4xl font-extrabold leading-tight tracking-tight text-slate-900 sm:text-5xl">
-              One simple place for everyday digital work.
-            </h1>
-            <p className="mt-4 max-w-3xl text-base text-slate-600 sm:text-lg">
-              Fast online tools for images, PDFs, text, documents, developers, health, finance, conversions and social media.
-            </p>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <button type="button" className={primaryBtn} onClick={navigationManager.open}>
-                Explore Tools
-              </button>
-              <button
-                type="button"
-                className={secondaryBtn}
-                onClick={() => workspaceRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
-              >
-                Open Workspace
-              </button>
-            </div>
-            <div className="mt-10 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <div className={metricBox}>
-                <div className="text-2xl font-extrabold text-slate-900">120+</div>
-                <div className="text-xs text-slate-600">Useful tools</div>
-              </div>
-              <div className={metricBox}>
-                <div className="text-2xl font-extrabold text-slate-900">13</div>
-                <div className="text-xs text-slate-600">Categories</div>
-              </div>
-              <div className={metricBox}>
-                <div className="text-2xl font-extrabold text-slate-900">100%</div>
-                <div className="text-xs text-slate-600">Browser-first</div>
-              </div>
-              <div className={metricBox}>
-                <div className="text-2xl font-extrabold text-slate-900">$0</div>
-                <div className="text-xs text-slate-600">Always free</div>
-              </div>
+              </aside>
             </div>
           </div>
-        </section>
-
-        <section className="mx-auto w-full max-w-7xl px-4 pt-5 sm:px-6">
-          <div className={adSlot}>ADVERTISEMENT</div>
-        </section>
-
-        <section className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-violet-700">Core Toolkit</p>
-          <h2 className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
-            The tools people use most, ready in one tap.
-          </h2>
-          <p className="mt-2 max-w-3xl text-slate-600">
-            Like the leading utility platforms, Toolinger keeps frequent tasks immediate: resize files, fix documents, and generate secure
-            outputs with no account required.
-          </p>
-          <div className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {featuredTools.map((tool) => (
-              <button key={tool.id} type="button" onClick={() => openTool(tool.id)} className={toolListBtn}>
-                {tool.name}
-                <div className="mt-1 text-xs font-normal text-slate-500">{tool.description}</div>
+        ) : (
+          <>
+            {!search && category === "all" ? (
+              <section className="home-hero page-width">
+                <div className="hero-copy-new">
+                  <span className="hero-pill">
+                    <span /> SMALL TASKS. SORTED.
+                  </span>
+                  <h1>
+                    Your everyday tasks.
+                    <br />
+                    <span>A little easier.</span>
+                  </h1>
+                  <p>
+                    A handy collection of tools for your files, words and ideas.
+                    Open a tool. Get it done. Carry on.
+                  </p>
+                  <div className="hero-buttons">
+                    <button
+                      className="site-primary"
+                      onClick={() =>
+                        document
+                          .getElementById("tool-directory")
+                          ?.scrollIntoView({ behavior: "smooth" })
+                      }
+                    >
+                      Explore the toolkit <Icon name="arrow" size={18} />
+                    </button>
+                    <span>
+                      <Icon name="shield" size={17} /> Free. No sign-up.
+                    </span>
+                  </div>
+                  <div className="hero-small-stats">
+                    <strong>{TOOL_LIST.length} tools</strong>
+                    <span>13 categories</span>
+                    <span>Made for your browser</span>
+                  </div>
+                </div>
+                <div className="hero-showcase">
+                  <span className="showcase-label">
+                    <Icon name="spark" size={16} /> THE PHOTO STUDIO
+                  </span>
+                  <div className="studio-art" aria-hidden="true">
+                    <div className="art-grid" />
+                    <div className="art-photo">
+                      <svg viewBox="0 0 140 180" fill="none">
+                        <rect width="140" height="180" fill="#d9ebe6" />
+                        <path
+                          d="M15 180v-24c0-34 110-34 110 0v24"
+                          fill="#445753"
+                        />
+                        <path d="M52 105h36v30H52z" fill="#bc8c70" />
+                        <ellipse
+                          cx="70"
+                          cy="69"
+                          rx="33"
+                          ry="43"
+                          fill="#d3a184"
+                        />
+                        <path
+                          d="M37 68C24 8 113 0 106 69L93 44C69 57 50 46 45 42Z"
+                          fill="#3b3435"
+                        />
+                        <path
+                          d="M56 73h2m24 0h2"
+                          stroke="#453a35"
+                          strokeWidth="3"
+                          strokeLinecap="round"
+                        />
+                        <path
+                          d="M63 91q7 5 14 0"
+                          stroke="#925c4b"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                      <div className="art-guide" />
+                    </div>
+                    <span className="art-measure measure-v">45 mm</span>
+                    <span className="art-measure measure-h">35 mm</span>
+                    <div className="art-chip">
+                      <span /> Ready for a fresh background
+                    </div>
+                    <div className="art-swatches">
+                      <i />
+                      <i />
+                      <i />
+                    </div>
+                  </div>
+                  <h2>A better ID photo, in minutes.</h2>
+                  <p>
+                    Frame your portrait, choose a size and export a print sheet.
+                  </p>
+                  <button
+                    className="showcase-link"
+                    onClick={() => openTool("passport-photo-maker")}
+                  >
+                    Open photo studio <Icon name="arrow" size={18} />
+                  </button>
+                </div>
+              </section>
+            ) : null}
+            <section
+              id="tool-directory"
+              className="directory-section page-width"
+            >
+              <div className="directory-heading">
+                <div>
+                  <span className="eyeline">THE TOOLKIT</span>
+                  <h2>
+                    {search
+                      ? "Search results"
+                      : category === "favourites"
+                        ? "Your saved tools"
+                        : "Find your next shortcut."}
+                  </h2>
+                </div>
+                <span className="tool-count">
+                  {tools.length} tools to explore
+                </span>
+              </div>
+              <div className="directory-layout">
+                <aside
+                  className="category-sidebar"
+                  aria-label="Tool categories"
+                >
+                  <button
+                    className={category === "all" ? "selected" : ""}
+                    onClick={() => setCategory("all")}
+                  >
+                    <Icon size={18} />
+                    All tools<span>{TOOL_LIST.length}</span>
+                  </button>
+                  <button
+                    className={category === "favourites" ? "selected" : ""}
+                    onClick={() => setCategory("favourites")}
+                  >
+                    <Icon name="star" size={18} />
+                    Saved tools<span>{favourites.length}</span>
+                  </button>
+                  <div className="category-divider" />
+                  {Object.entries(CATEGORY_LABELS).map(([id, label]) => (
+                    <button
+                      key={id}
+                      className={category === id ? "selected" : ""}
+                      aria-pressed={category === id}
+                      onClick={() => setCategory(id)}
+                    >
+                      <Icon name={CATEGORY_ICONS[id]} size={18} />
+                      {label}
+                      <span>
+                        {TOOL_LIST.filter((t) => t.category === id).length}
+                      </span>
+                    </button>
+                  ))}
+                </aside>
+                <div className="directory-content">
+                  {!search && category === "all" && recent.length ? (
+                    <div className="recent-row">
+                      <span>Recently opened</span>
+                      {recent.map((id) => {
+                        const t = TOOL_LIST.find((item) => item.id === id);
+                        return t ? (
+                          <button key={id} onClick={() => openTool(id)}>
+                            {t.name}
+                          </button>
+                        ) : null;
+                      })}
+                    </div>
+                  ) : null}
+                  <div className="catalog-grid">{tools.map(card)}</div>
+                  {!tools.length ? (
+                    <div className="empty-state">
+                      <Icon
+                        name={category === "favourites" ? "star" : "search"}
+                        size={32}
+                      />
+                      <h3>
+                        {category === "favourites" && !search
+                          ? "Keep your go-to tools close."
+                          : "No tools found."}
+                      </h3>
+                      <p>
+                        {category === "favourites" && !search
+                          ? "Tap the star on any tool to save it here."
+                          : "Try a shorter search or another category."}
+                      </p>
+                      <button
+                        className="site-primary"
+                        onClick={() => {
+                          setSearch("");
+                          setCategory("all");
+                        }}
+                      >
+                        Browse all tools
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            </section>
+          </>
+        )}
+      </main>
+      <footer className="site-footer page-width">
+        <div className="footer-top">
+          <button className="brand-button" onClick={home}>
+            <img src="./toolinger-logo.svg" alt="" width="30" height="30" />
+            <span>
+              toolinger<span className="brand-dot">.</span>
+            </span>
+          </button>
+          <p>A little help for everyday digital work.</p>
+          <span className="footer-privacy">
+            <Icon name="shield" size={16} /> Your files stay yours.
+          </span>
+        </div>
+        <div className="footer-bottom-new">
+          <span>© {new Date().getFullYear()} Toolinger</span>
+          <nav aria-label="Policies">
+            {Object.entries(LEGAL_CONTENT).map(([id, page]) => (
+              <button key={id} onClick={() => setLegalPage(id)}>
+                {page.title.replace("Toolinger", "").trim()}
+              </button>
+            ))}
+            <button onClick={() => setLegalPage("choices")}>
+              Privacy choices
+            </button>
+          </nav>
+        </div>
+      </footer>
+      {menuOpen ? (
+        <Dialog
+          title="Browse categories"
+          close={() => setMenuOpen(false)}
+          drawer
+        >
+          <div className="drawer-categories">
+            {[
+              ["all", "All tools"],
+              ["favourites", "Saved tools"],
+              ...Object.entries(CATEGORY_LABELS),
+            ].map(([id, label]) => (
+              <button
+                key={id}
+                onClick={() => {
+                  location.hash = "";
+                  setCategory(id);
+                  setMenuOpen(false);
+                  setSearch("");
+                }}
+              >
+                <Icon
+                  name={
+                    CATEGORY_ICONS[id] ??
+                    (id === "favourites" ? "star" : "grid")
+                  }
+                />
+                {label}
+                <Icon name="arrow" size={16} />
               </button>
             ))}
           </div>
-        </section>
-
-        <section className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6 lg:px-8">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-violet-700">Why Toolinger</p>
-          <h2 className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
-            Built for speed, privacy, and mobile reliability.
-          </h2>
-          <div className="mt-4 grid gap-3 md:grid-cols-2">
-            <div className={resultBox}>Zero upload by default: most tools process directly in your browser.</div>
-            <div className={resultBox}>Instant results: no queues, no sign-up gates, no hidden waits.</div>
-            <div className={resultBox}>Mobile-first controls sized for Android Chrome touch usage.</div>
-            <div className={resultBox}>Ad-ready architecture with isolated configuration and clean placeholders.</div>
-          </div>
-        </section>
-
-        <section className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6 lg:px-8">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-violet-700">How It Works</p>
-          <h2 className="mt-2 text-2xl font-bold tracking-tight text-slate-900">Search, use, download.</h2>
-          <div className="mt-4 grid gap-3 md:grid-cols-3">
-            <div className={resultBox}>1. Open the menu or search for a tool by name/category.</div>
-            <div className={resultBox}>2. Upload file, paste text, or enter values.</div>
-            <div className={resultBox}>3. Download, copy, or reuse your output instantly.</div>
-          </div>
-        </section>
-
-        <section id="workspace" ref={workspaceRef} className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-          <div className="mb-4 rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-violet-700">
-              {CATEGORY_LABELS[activeTool.category]}
-            </p>
-            <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">{activeTool.name}</h2>
-            <p className="mt-1 text-slate-600">{activeTool.description}</p>
-          </div>
-          {renderActiveTool()}
-        </section>
-
-        <section className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6">
-          <div className={adSlot}>ADVERTISEMENT</div>
-        </section>
-      </main>
-
-      <footer className="border-t border-slate-200 bg-white">
-        <div className="mx-auto grid w-full max-w-7xl gap-6 px-4 py-8 sm:grid-cols-2 sm:px-6 lg:grid-cols-3 lg:px-8">
-          <div>
-            <div className="flex items-center gap-2">
-              <img src="./toolinger-logo.svg" alt="Toolinger" className="h-10 w-10" />
-              <div className="text-xl font-bold">Toolinger</div>
-            </div>
-            <p className="mt-3 text-sm text-slate-600">
-              Fast online tools for images, PDFs, text, developers, health, finance, conversions and social media.
-            </p>
-          </div>
-          <div>
-            <h3 className="font-semibold text-slate-900">Legal</h3>
-            <div className="mt-2 flex flex-wrap gap-2 text-sm">
-              {LEGAL_PAGES.filter((item) => item !== "Contact").map((item) => (
-                <button key={item} type="button" onClick={() => setLegalPage(item)} className={secondaryBtn}>
-                  {item}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <h3 className="font-semibold text-slate-900">Support</h3>
-            <p className="mt-2 text-sm text-slate-600">Toolinger Support</p>
-            <a href="mailto:lootchaser2026@gmail.com" className="mt-2 inline-block text-sm font-semibold text-violet-700">
-              lootchaser2026@gmail.com
-            </a>
-            <div className="mt-3">
-              <button type="button" onClick={() => setLegalPage("Contact")} className={secondaryBtn}>
-                Contact
-              </button>
-            </div>
-          </div>
-        </div>
-      </footer>
-
-      {legalPage ? (
-        <div className="fixed inset-0 z-[80] grid place-items-center bg-slate-950/55 p-4" role="dialog" aria-modal="true">
-          <div className={`${glassPanel} max-h-[80vh] w-full max-w-2xl overflow-auto`}>
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <h3 className="text-xl font-bold text-slate-900">{legalPage}</h3>
-              <button type="button" className={secondaryBtn} onClick={() => setLegalPage(null)}>
-                Close
-              </button>
-            </div>
-            <p className="whitespace-pre-line text-sm text-slate-700">{legalContent[legalPage]}</p>
-          </div>
-        </div>
+        </Dialog>
       ) : null}
-
-      {!consent ? (
-        <div className="fixed bottom-4 left-4 right-4 z-[90] mx-auto max-w-xl">
-          <div className={glassPanel}>
-            <h3 className="text-lg font-semibold text-slate-900">Privacy & Cookie Choices</h3>
-            <p className="mt-2 text-sm text-slate-700">
-              Toolinger uses essential browser storage for site functionality. Advertising technologies may use cookies or similar
-              technologies when advertising is enabled.
-            </p>
-            <div className="mt-4 flex flex-wrap gap-2">
+      {legalPage ? (
+        <Dialog
+          title={LEGAL_CONTENT[legalPage]?.title ?? "Privacy choices"}
+          close={() => setLegalPage(null)}
+        >
+          {legalPage === "choices" ? (
+            <div className="policy-body">
+              <p>
+                Your theme, saved tools and recent tool IDs are stored on this
+                device. No advertising or analytics scripts are active.
+              </p>
+              <p>
+                Clear notes in Notepad. Remove offline app caches from your
+                browser’s site-data settings.
+              </p>
               <button
-                type="button"
-                className={primaryBtn}
+                className="site-primary"
                 onClick={() => {
+                  setFavourites([]);
+                  setRecent([]);
+                  setTheme("light");
                   try {
-                    localStorage.setItem("toolinger-consent", "allow");
-                  } catch {
-                    // ignore storage errors
-                  }
-                  setConsent("allow");
+                    localStorage.removeItem("toolinger-consent");
+                  } catch {}
+                  setNotice("Tool preferences cleared");
                 }}
               >
-                Allow
-              </button>
-              <button
-                type="button"
-                className={secondaryBtn}
-                onClick={() => {
-                  try {
-                    localStorage.setItem("toolinger-consent", "necessary-only");
-                  } catch {
-                    // ignore storage errors
-                  }
-                  setConsent("necessary-only");
-                }}
-              >
-                Necessary Only
-              </button>
-              <button type="button" className={secondaryBtn} onClick={() => setLegalPage("Privacy Policy")}>
-                Privacy Policy
+                Clear tool preferences
               </button>
             </div>
-          </div>
+          ) : (
+            <div className="policy-body">
+              {LEGAL_CONTENT[legalPage]?.body
+                .split("\n\n")
+                .map((paragraph, i) => (
+                  <p key={i}>{paragraph}</p>
+                ))}
+              {legalPage === "contact" ? (
+                <a className="text-link" href="mailto:lootchaser2026@gmail.com">
+                  Email support <Icon name="arrow" size={16} />
+                </a>
+              ) : null}
+            </div>
+          )}
+        </Dialog>
+      ) : null}
+      {notice ? (
+        <div className="site-toast" role="status">
+          {notice}
         </div>
       ) : null}
     </div>
   );
 }
-
 export default App;
