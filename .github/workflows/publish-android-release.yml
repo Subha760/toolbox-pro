@@ -1,0 +1,51 @@
+name: Publish signed Android release assets
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/publish-android-release.yml']
+permissions:
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: toolinger-release-assets-e1312b3
+          path: release-packages
+      - name: Verify signed package checksums
+        working-directory: release-packages
+        run: sha256sum --check SHA256SUMS.txt
+      - name: Publish verified public packages
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh api "repos/$GH_REPO/releases" > "$RUNNER_TEMP/toolinger-releases.json"
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          folder=Path('release-packages')
+          releases=json.loads(Path(os.environ['RUNNER_TEMP'],'toolinger-releases.json').read_text())
+          current=next((r for r in releases if r['tag_name']=='v4.1.0'),None)
+          Path(os.environ['RUNNER_TEMP'],'toolinger-release-id').write_text(str(current['id']) if current else '')
+          body={'tag_name':'v4.1.0','target_commitish':'e1312b3a491a071447bea24a6f0ed50fcfe69054','name':'Toolinger 4.1.0 — Everyday tools and owner console','body':(folder/'RELEASE-NOTES.md').read_text(),'draft':True,'prerelease':False}
+          Path(os.environ['RUNNER_TEMP'],'toolinger-release-payload.json').write_text(json.dumps(body))
+          PY
+          release_id=$(cat "$RUNNER_TEMP/toolinger-release-id")
+          if [ -z "$release_id" ]; then
+            release_id=$(gh api --method POST "repos/$GH_REPO/releases" --input "$RUNNER_TEMP/toolinger-release-payload.json" --jq .id)
+          fi
+          for name in Toolinger-4.1.0.apk Toolinger-4.1.0.aab Toolinger-Owner-4.1.0.apk Toolinger-store-submission.zip SHA256SUMS.txt; do
+            old_id=$(gh api "repos/$GH_REPO/releases/$release_id/assets" --jq ".[] | select(.name == \"$name\") | .id")
+            if [ -n "$old_id" ]; then gh api --method DELETE "repos/$GH_REPO/releases/assets/$old_id"; fi
+            curl --fail --silent --show-error --request POST \
+              --header "Authorization: Bearer $GH_TOKEN" \
+              --header 'Content-Type: application/octet-stream' \
+              --data-binary "@release-packages/$name" \
+              "https://uploads.github.com/repos/$GH_REPO/releases/$release_id/assets?name=$name" \
+              --output "$RUNNER_TEMP/toolinger-upload-response.json"
+          done
+          gh api --method PATCH "repos/$GH_REPO/releases/$release_id" --field draft=false --jq .html_url
