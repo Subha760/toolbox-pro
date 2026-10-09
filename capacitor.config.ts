@@ -1,12 +1,23 @@
-import type { CapacitorConfig } from '@capacitor/cli';
+import type { CapacitorConfig } from "@capacitor/cli";
 
 const config: CapacitorConfig = {
-  appId: 'io.toolinger.app',
-  appName: 'Toolinger',
-  webDir: 'dist',
+  appId: process.env.TOOLINGER_OWNER_APP
+    ? "io.toolinger.owner"
+    : "io.toolinger.app",
+  appName: process.env.TOOLINGER_OWNER_APP ? "Toolinger Owner" : "Toolinger",
+  webDir: process.env.TOOLINGER_OWNER_APP ? "owner-shell" : "dist",
   server: {
-    androidScheme: 'https'
-  }
+    androidScheme: "https",
+    ...(process.env.TOOLINGER_OWNER_APP
+      ? {
+          url: "https://tools.choicematrix.in/admin/",
+          allowNavigation: [
+            "tools.choicematrix.in",
+            "toolinger-owner.cloudflareaccess.com",
+          ],
+        }
+      : {}),
+  },
 };
 
 export default config;

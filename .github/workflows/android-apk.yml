@@ -1,32 +1,17 @@
-name: Build Toolinger Android APK
-
+name: Build Toolinger Android packages
 on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths:
-      - 'app.tsx'
-      - 'main.jsx'
-      - 'index.html'
-      - 'src/**'
-      - 'public/**'
-      - 'package.json'
-      - 'package-lock.json'
-      - 'styles.css'
-      - 'postcss.config.js'
-      - 'vite.config.js'
-      - 'capacitor.config.ts'
-      - '.github/workflows/android-apk.yml'
-
+    paths: ['app.tsx', 'main.jsx', 'src/**', 'public/**', 'package*.json', 'styles.css', 'capacitor.config.ts', 'scripts/prepare-android.mjs', '.github/workflows/android-apk.yml']
 permissions:
   contents: read
-
 jobs:
-  test-and-build-apk:
+  android:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     env:
       ONNXRUNTIME_NODE_INSTALL_CUDA: skip
-    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -36,25 +21,39 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-      - name: Install and test website
-        run: |
-          npm ci --no-audit --no-fund
-          npm run check
-      - name: Build assets for the native root path
-        run: VITE_APP_BASE=/ npm run build
-      - name: Add Android wrapper
-        run: |
-          npm install --no-save --no-audit --no-fund @capacitor/core@7 @capacitor/cli@7 @capacitor/android@7
-          npx cap add android
-          npx cap sync android
-      - name: Build debug-signed APK
+      - name: Install Android build tools
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0" "build-tools;35.0.0"
+      - run: npm ci --no-audit --no-fund
+      - run: npm run typecheck && npm test
+      - run: VITE_APP_BASE=/ VITE_SITE_ORIGIN=https://tools.choicematrix.in npm run build
+      - run: npx cap add android && npx cap sync android && node scripts/prepare-android.mjs
+      - name: Build test APK
         working-directory: android
         run: ./gradlew assembleDebug
-      - name: Verify APK exists
-        run: test -s android/app/build/outputs/apk/debug/app-debug.apk
       - uses: actions/upload-artifact@v4
         with:
           name: Toolinger-Android-debug
           path: android/app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
+      - name: Build signed store packages when owner secrets are configured
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          TOOLINGER_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          TOOLINGER_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          TOOLINGER_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "Release signing secrets need owner setup. Debug APK is available; private release key is never committed."
+            exit 0
+          fi
+          export TOOLINGER_KEYSTORE="$RUNNER_TEMP/toolinger-release.jks"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$TOOLINGER_KEYSTORE"
+          cd android
+          ./gradlew assembleRelease bundleRelease
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Toolinger-store-release
+          path: |
+            android/app/build/outputs/apk/release/app-release.apk
+            android/app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: ignore
           retention-days: 30

@@ -19,7 +19,7 @@ const [{ TOOL_LIST, CATEGORY_LABELS }, { LEGAL_CONTENT }, { GUIDES }] =
     load("src/guides.ts"),
   ]);
 const base = process.env.VITE_APP_BASE || "/toolbox-pro/",
-  origin = "https://subha760.github.io",
+  origin = process.env.VITE_SITE_ORIGIN || "https://subha760.github.io",
   home = origin + base;
 const escape = (s) =>
   String(s).replace(
@@ -33,6 +33,12 @@ const template = await readFile("dist/index.html", "utf8");
 const pages = [];
 const add = (path, title, description, body, type = "WebPage") =>
   pages.push({ path, title, description, body, type });
+add(
+  "admin",
+  "Owner console — Toolinger",
+  "Private Toolinger owner dashboard.",
+  "<p>Owner sign-in is required.</p>",
+);
 const links = (tools) =>
   `<ul>${tools.map((t) => `<li><a href="${base}tools/${t.id}/">${escape(t.name)}</a> — ${escape(t.description)}</li>`).join("")}</ul>`;
 add(
@@ -129,7 +135,7 @@ for (const page of pages) {
     )
     .replace(
       "</head>",
-      `<link rel="canonical" href="${url}"/><meta property="og:title" content="${escape(page.title)}"/><meta property="og:description" content="${escape(page.description)}"/><meta property="og:url" content="${url}"/><meta property="og:type" content="${page.type === "Article" ? "article" : "website"}"/><script type="application/ld+json">${JSON.stringify(schema).replace(/</g, "\\u003c")}</script></head>`,
+      `${page.path === "admin" ? '<meta name="robots" content="noindex,nofollow"/>' : ""}<link rel="canonical" href="${url}"/><meta property="og:title" content="${escape(page.title)}"/><meta property="og:description" content="${escape(page.description)}"/><meta property="og:url" content="${url}"/><meta property="og:type" content="${page.type === "Article" ? "article" : "website"}"/><script type="application/ld+json">${JSON.stringify(schema).replace(/</g, "\\u003c")}</script></head>`,
     )
     .replace(
       '<div id="root"></div>',
@@ -141,11 +147,14 @@ for (const page of pages) {
 }
 await writeFile(
   "dist/sitemap.xml",
-  `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${pages.map((p) => `<url><loc>${home}${p.path ? p.path + "/" : ""}</loc></url>`).join("")}</urlset>`,
+  `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${pages
+    .filter((p) => p.path !== "admin")
+    .map((p) => `<url><loc>${home}${p.path ? p.path + "/" : ""}</loc></url>`)
+    .join("")}</urlset>`,
 );
 await writeFile(
   "dist/robots.txt",
-  `User-agent: *\nAllow: /\nSitemap: ${home}sitemap.xml\n`,
+  `User-agent: *\nAllow: /\nDisallow: /admin/\nDisallow: /api/\nSitemap: ${home}sitemap.xml\n`,
 );
 const ads = JSON.parse(await readFile("public/ad-config.json", "utf8"));
 if (ads.enabled) {

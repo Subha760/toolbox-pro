@@ -1,0 +1,15 @@
+name = "toolinger-control"
+main = "worker.mjs"
+compatibility_date = "2026-10-09"
+account_id = "112da2f92ad121c9c15f2e1de3089908"
+workers_dev = false
+[[d1_databases]]
+binding = "DB"
+database_name = "toolinger-control"
+database_id = "3e7c18a0-0745-44d2-ae8a-0c325639ca0a"
+[vars]
+OWNER_EMAIL = "Subhababai21@gmail.com"
+ACCESS_AUD = "cdbbfd1c4a65542dd6c6ba08a4cdc902f756077122c452fafada04b219f47bb6"
+TOOL_IDS = '''["qr-code-generator", "passport-photo-maker", "image-to-pdf", "image-resizer", "image-format-converter", "image-compressor", "grayscale-filter", "sepia-filter", "brightness-contrast", "rotate-image", "flip-image", "image-base64", "image-cropper", "quote-card-generator", "image-watermark", "image-metadata", "color-picker-image", "image-blur", "image-sharpen", "collage-maker", "merge-pdf", "split-pdf", "compress-pdf", "pdf-rotate", "delete-pdf-pages", "extract-pdf-pages", "rearrange-pdf-pages", "pdf-metadata-viewer", "add-page-numbers", "text-to-pdf", "html-to-pdf", "pdf-preview", "word-counter", "character-counter", "line-counter", "case-converter", "remove-extra-spaces", "find-replace", "duplicate-line-remover", "text-sorter", "text-reverser", "markdown-preview", "sentence-counter", "reading-time", "slug-generator", "text-cleaner", "notepad", "text-to-pdf-doc", "json-formatter-doc", "json-validator-doc", "txt-downloader", "html-formatter-doc", "css-formatter-doc", "js-formatter-doc", "json-formatter", "json-validator", "base64-encoder", "base64-decoder", "url-encoder", "url-decoder", "html-formatter", "css-formatter", "javascript-formatter", "uuid-generator", "password-generator", "hash-generator", "timestamp-converter", "regex-tester", "color-converter", "bmi-calculator", "bmr-calculator", "calorie-calculator", "water-intake-calculator", "body-fat-estimator", "emi-calculator", "simple-interest", "compound-interest", "loan-calculator", "discount-calculator", "gst-calculator", "profit-margin", "percentage-calculator", "length-converter", "weight-converter", "temperature-converter", "area-converter", "volume-converter", "speed-converter", "storage-converter", "time-converter", "energy-converter", "pressure-converter", "facebook-post-formatter", "facebook-caption-generator", "facebook-hashtag-helper", "facebook-engagement-planner", "facebook-dimension-guide", "instagram-caption-formatter", "instagram-hashtag-organizer", "instagram-bio-counter", "instagram-dimension-helper", "instagram-reel-caption", "youtube-title-counter", "youtube-description-formatter", "youtube-tag-organizer", "youtube-thumbnail-dimensions", "youtube-timestamp-generator", "youtube-template-generator", "ai-sentiment", "ai-semantic-similarity", "ai-extractive-summary", "ai-keyword-extractor", "coin-flip", "random-number-generator", "random-name-picker", "countdown-helper", "age-calculator", "tip-calculator", "binary-converter", "lorem-generator", "daily-planner", "habit-tracker", "expense-tracker", "shopping-list", "focus-timer", "hydration-tracker", "savings-goal", "split-bill", "meal-planner", "recipe-scaler", "date-calculator", "world-clock", "unit-price-comparison", "packing-checklist"]'''
+[triggers]
+crons = ["20 3 * * *"]

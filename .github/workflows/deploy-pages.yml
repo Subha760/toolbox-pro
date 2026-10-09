@@ -35,6 +35,8 @@ jobs:
           name: browser-test-results
           path: test-results
           if-no-files-found: ignore
+      - name: Build custom-domain assets
+        run: VITE_APP_BASE=/ VITE_SITE_ORIGIN=https://tools.choicematrix.in npm run build
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

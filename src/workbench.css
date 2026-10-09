@@ -1,18 +1,18 @@
 @font-face {
   font-family: Space;
-  src: url("../public/fonts/space-regular.ttf") format("truetype");
+  src: url("/fonts/space-regular.ttf") format("truetype");
   font-weight: 400;
   font-display: swap;
 }
 @font-face {
   font-family: Space;
-  src: url("../public/fonts/space-bold.ttf") format("truetype");
+  src: url("/fonts/space-bold.ttf") format("truetype");
   font-weight: 600 800;
   font-display: swap;
 }
 @font-face {
   font-family: Syne;
-  src: url("../public/fonts/syne-display.ttf") format("truetype");
+  src: url("/fonts/syne-display.ttf") format("truetype");
   font-weight: 600 900;
   font-display: swap;
 }
@@ -1796,3 +1796,5 @@ progress {
 }
 .home-grid .catalog-card:nth-child(3) .card-open { color:#fff; }
 .home-grid .catalog-card:nth-child(1) .card-open { color:#202126; }
+/* Low movement support and feedback surfaces. */
+.usage-choice{position:fixed;bottom:18px;left:18px;z-index:55;width:min(390px,calc(100vw - 36px));padding:20px;border:1px solid var(--line,#cbd1dd);border-radius:16px;background:var(--surface,#fff);color:var(--ink,#17223a);box-shadow:0 14px 50px #111d3520;font-size:13px}.usage-choice p{line-height:1.6;margin:10px 0}.usage-choice>div{display:flex;gap:8px;flex-wrap:wrap}.usage-choice button{padding:10px;border:1px solid #cad2e2;border-radius:8px;cursor:pointer;background:#eef2fb;color:#17223a;font:inherit}.usage-choice a{display:inline-block;margin-top:12px;color:inherit;font-size:11px}.tool-report{margin-top:24px}.tool-report form{padding:24px;margin-top:14px;border:1px solid var(--line,#cbd1dd);border-radius:16px;background:var(--surface,#fff)}.tool-report label{display:block;margin:14px 0;font-size:13px}.tool-report textarea,.tool-report input,.tool-report select{display:block;width:100%;padding:12px;margin-top:7px;border:1px solid #cad2e2;border-radius:8px;background:var(--surface,#fff);color:inherit;font:inherit}.tool-report textarea{min-height:100px}.tool-report p{font-size:12px;line-height:1.7}.site-announcement{background:#203fb7;color:#fff;padding:12px 24px;text-align:center;font-size:13px}.ad-reserve{min-height:90px;display:flex;align-items:center;justify-content:center;border:1px dashed var(--line,#cbd1dd);border-radius:12px;margin:24px 0;color:var(--muted,#7c879a);font-size:10px;letter-spacing:1.8px}.catalog-card{content-visibility:auto;contain-intrinsic-size:auto 245px}

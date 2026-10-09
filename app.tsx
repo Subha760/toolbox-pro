@@ -10,6 +10,9 @@ import { validatePhoto } from "./src/background-removal.mjs";
 import { localCutout } from "./src/local-cutout.mjs";
 import type { PDFDocument } from "pdf-lib";
 
+import { useCommunity, UsageChoice, ReportTool } from "./src/community";
+import { saveDownload } from "./src/download";
+import { ToolIcon } from "./src/tool-icons";
 import { LEGAL_CONTENT } from "./src/policies";
 import {
   parsePageSelection,
@@ -336,14 +339,7 @@ const escapeHtml = (value: string) =>
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
 
-const downloadBlob = (blob: Blob, fileName: string) => {
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = fileName;
-  anchor.click();
-  window.setTimeout(() => URL.revokeObjectURL(url), 10000);
-};
+const downloadBlob = saveDownload;
 
 const readAsArrayBuffer = (blob: Blob) =>
   new Promise<ArrayBuffer>((resolve, reject) => {
@@ -4403,6 +4399,13 @@ function sampleFor(tool: ToolConfig) {
 function App() {
   const route = useRoute();
   const lastFocusedRoute = useRef(route);
+  const tiltFrame = useRef(0);
+  useEffect(() => {
+    const fail = (event: Event) =>
+      setNotice((event as CustomEvent<string>).detail);
+    window.addEventListener("toolinger:download-error", fail);
+    return () => window.removeEventListener("toolinger:download-error", fail);
+  }, []);
   const [menuOpen, setMenuOpen] = useState(false),
     [search, setSearch] = useState(""),
     [legalPage, setLegalPage] = useState<string | null>(null),
@@ -4428,6 +4431,7 @@ function App() {
   const activeTool = route.startsWith("tools/")
     ? TOOL_LIST.find((t) => t.id === route.split("/")[1])
     : undefined;
+  const community = useCommunity(activeTool?.id);
   const category = route.startsWith("categories/")
     ? route.split("/")[1]
     : route === "saved"
@@ -4457,7 +4461,12 @@ function App() {
       `${t.name} ${t.description} ${t.keywords.join(" ")} ${CATEGORY_LABELS[t.category]}`
         .toLowerCase()
         .includes(search.trim().toLowerCase()),
-  ).sort((a, b) => (sort === "az" ? a.name.localeCompare(b.name) : 0));
+  ).sort((a, b) =>
+    sort === "az"
+      ? a.name.localeCompare(b.name)
+      : Number(Boolean(community.tools[b.id]?.featured)) -
+        Number(Boolean(community.tools[a.id]?.featured)),
+  );
   const openTool = (id: string) => {
     navigate(`tools/${id}`);
     setMenuOpen(false);
@@ -4512,7 +4521,7 @@ function App() {
       "link[rel=canonical]",
     );
     if (canonical)
-      canonical.href = `https://subha760.github.io${routeHref(route ? route + "/" : "")}`;
+      canonical.href = `${import.meta.env.VITE_SITE_ORIGIN || "https://subha760.github.io"}${routeHref(route ? route + "/" : "")}`;
   }, [route]);
   useEffect(() => {
     if (activeTool)
@@ -4609,9 +4618,10 @@ function App() {
     <article className={`catalog-card card-${tool.category}`} key={tool.id}>
       <a className="card-open" href={routeHref(`tools/${tool.id}/`)}>
         <span className={`tool-icon category-${tool.category}`}>
-          <Icon name={CATEGORY_ICONS[tool.category] ?? "spark"} size={23} />
+          <ToolIcon tool={tool} size={23} />
         </span>
         <span className="card-category">
+          {community.tools[tool.id]?.featured ? "Featured · " : ""}
           {CATEGORY_LABELS[tool.category].replace(" Tools", "")}
         </span>
         <h3>{tool.name}</h3>
@@ -4776,6 +4786,9 @@ function App() {
           </button>
         </div>
       </header>
+      {community.announcement.enabled && (
+        <div className="site-announcement">{community.announcement.text}</div>
+      )}
       <main id="main-content" tabIndex={-1}>
         {activeTool ? (
           <div className="workspace-layout page-width">
@@ -4864,7 +4877,16 @@ function App() {
                   }
                 >
                   <ToolBoundary key={`${activeTool.id}-${reset}`}>
-                    <div data-testid="tool-content">{renderActiveTool()}</div>
+                    <div data-testid="tool-content">
+                      {community.tools[activeTool.id]?.enabled === false ? (
+                        <p role="status">
+                          {community.tools[activeTool.id]?.message ||
+                            "This tool is temporarily under maintenance. Please try another tool."}
+                        </p>
+                      ) : (
+                        renderActiveTool()
+                      )}
+                    </div>
                   </ToolBoundary>
                 </SampleContext.Provider>
               </section>
@@ -4946,6 +4968,7 @@ function App() {
                 </p>
               </details>
             </section>
+            <ReportTool tool={activeTool.id} />
             <AdPlacement placement="tool" />
           </div>
         ) : route === "" ? (
@@ -4981,17 +5004,29 @@ function App() {
               <div
                 className="workbench-art"
                 onPointerMove={(e) => {
-                  const r = e.currentTarget.getBoundingClientRect();
-                  e.currentTarget.style.setProperty(
-                    "--tilt-x",
-                    `${((e.clientX - r.left - r.width / 2) / r.width) * 8}deg`,
-                  );
-                  e.currentTarget.style.setProperty(
-                    "--tilt-y",
-                    `${(-(e.clientY - r.top - r.height / 2) / r.height) * 8}deg`,
-                  );
+                  if (
+                    e.pointerType !== "mouse" ||
+                    matchMedia("(prefers-reduced-motion: reduce)").matches
+                  )
+                    return;
+                  cancelAnimationFrame(tiltFrame.current);
+                  const target = e.currentTarget,
+                    x = e.clientX,
+                    y = e.clientY;
+                  tiltFrame.current = requestAnimationFrame(() => {
+                    const r = target.getBoundingClientRect();
+                    target.style.setProperty(
+                      "--tilt-x",
+                      `${((x - r.left - r.width / 2) / r.width) * 8}deg`,
+                    );
+                    target.style.setProperty(
+                      "--tilt-y",
+                      `${(-(y - r.top - r.height / 2) / r.height) * 8}deg`,
+                    );
+                  });
                 }}
                 onPointerLeave={(e) => {
+                  cancelAnimationFrame(tiltFrame.current);
                   e.currentTarget.style.setProperty("--tilt-x", "0deg");
                   e.currentTarget.style.setProperty("--tilt-y", "0deg");
                 }}
@@ -5505,9 +5540,19 @@ function App() {
             >
               Manage advertising choices
             </button>
+            <button
+              className="daily-secondary"
+              onClick={() => {
+                setLegalPage(null);
+                window.dispatchEvent(new Event("toolinger:usage-privacy"));
+              }}
+            >
+              Manage anonymous usage
+            </button>
           </div>
         </Dialog>
       ) : null}
+      <UsageChoice />
       <ConsentControls />
       {notice ? (
         <div className="site-toast" role="status">

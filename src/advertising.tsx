@@ -1,3 +1,4 @@
+import { Capacitor } from "@capacitor/core";
 import { useEffect, useRef, useState } from "react";
 import { assetUrl, routeHref } from "./router";
 type Config = {
@@ -11,12 +12,21 @@ type Choice = { version: 1; advertising: boolean; updated: string };
 const KEY = "toolinger-ad-consent-v1";
 let configPromise: Promise<Config> | undefined;
 function config() {
-  return (configPromise ??= fetch(assetUrl("ad-config.json"), {
-    cache: "no-store",
-  })
+  return (configPromise ??= fetch(
+    location.hostname === "tools.choicematrix.in"
+      ? "/api/config"
+      : assetUrl("ad-config.json"),
+    {
+      cache: "no-store",
+    },
+  )
     .then((r) => {
       if (!r.ok) throw new Error("No ad configuration");
-      return r.json();
+      return r
+        .json()
+        .then((data) =>
+          data.ads ? { ...data.ads, provider: "adsense" } : data,
+        );
     })
     .catch(() => ({
       enabled: false,
@@ -137,7 +147,13 @@ export function AdPlacement({ placement }: { placement: string }) {
   }, []);
   useEffect(() => {
     setApproved(false);
-    if (!settings?.enabled || !consent?.advertising || privacySignal()) return;
+    if (
+      Capacitor.isNativePlatform() ||
+      !settings?.enabled ||
+      !consent?.advertising ||
+      privacySignal()
+    )
+      return;
     const tcf = (window as any).__tcfapi;
     if (settings.requireCertifiedCmp) {
       if (typeof tcf !== "function") return;
@@ -185,7 +201,12 @@ export function AdPlacement({ placement }: { placement: string }) {
       active = false;
     };
   }, [eligible, settings?.publisherId, slot]);
-  if (!eligible || !settings) return null;
+  if (!eligible || !settings)
+    return (
+      <aside className="ad-reserve" aria-label="Reserved advertising space">
+        ADVERTISEMENT SPACE
+      </aside>
+    );
   return (
     <aside className="ad-placement" aria-label="Advertisement">
       <span>Advertisement</span>

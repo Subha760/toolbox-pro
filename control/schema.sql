@@ -1,0 +1,10 @@
+CREATE TABLE IF NOT EXISTS events (id TEXT PRIMARY KEY, visitor TEXT NOT NULL, tool TEXT NOT NULL, kind TEXT NOT NULL, created TEXT NOT NULL DEFAULT (datetime('now')));
+CREATE INDEX IF NOT EXISTS events_created ON events(created);
+CREATE INDEX IF NOT EXISTS events_visitor ON events(visitor,created);
+CREATE TABLE IF NOT EXISTS reports (id TEXT PRIMARY KEY, tool TEXT NOT NULL, kind TEXT NOT NULL, message TEXT NOT NULL, email TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'open', note TEXT NOT NULL DEFAULT '', created TEXT NOT NULL DEFAULT (datetime('now')));
+CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS audit (id INTEGER PRIMARY KEY AUTOINCREMENT, actor TEXT NOT NULL, action TEXT NOT NULL, target TEXT NOT NULL, created TEXT NOT NULL DEFAULT (datetime('now')));
+CREATE TABLE IF NOT EXISTS limits (key TEXT PRIMARY KEY, count INTEGER NOT NULL, expires INTEGER NOT NULL);
+INSERT OR IGNORE INTO settings VALUES ('ads','{"enabled":false,"publisherId":"","slots":{"directory":"","tool":"","guide":""},"requireCertifiedCmp":true}');
+INSERT OR IGNORE INTO settings VALUES ('tools','{}');
+INSERT OR IGNORE INTO settings VALUES ('announcement','{"text":"","enabled":false}');
