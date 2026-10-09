@@ -2082,7 +2082,7 @@ function UnitTool({ mode }: { mode: string }) {
 }
 
 function QrTool() {
-  const [text, setText] = useState("https://subha760.github.io/toolbox-pro/");
+  const [text, setText] = useState("https://tools.choicematrix.in/");
   const [sizeRaw, setSizeRaw] = useState("600");
   const [qrSrc, setQrSrc] = useState("");
   const [error, setError] = useState("");
