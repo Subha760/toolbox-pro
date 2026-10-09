@@ -16,3 +16,5 @@ Domain: GoDaddy is the registrar; the active authoritative nameservers are Cloud
 Worker source, schema and deployment configuration are in `control/`. The initial database schema is idempotent. `TOOL_IDS` in Wrangler variables must match the catalog whenever tools change. Deploy with an owner-controlled Cloudflare session using `npx wrangler deploy --config control/wrangler.toml`; API changes are not silently deployed by the frontend workflow. This session deployed the Worker directly through the connected Cloudflare API.
 
 AdSense stays off until genuine publisher/slot IDs are saved. A certified consent platform must supply the TCF purpose/vendor consent before browser ads load. No arbitrary ad scripts or secret credentials can be entered through the settings API. Native Android ads stay disabled and need a separate AdMob/consent integration before launch with ads.
+
+Cloudflare Web Analytics was already auto-installed across the parent zone. Toolinger HTML uses a `no-transform` response directive to prevent automatic script injection on this hostname. Analytics settings on the other subdomains were not changed.

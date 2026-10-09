@@ -396,6 +396,9 @@ export default {
       const headers = new Headers(response.headers);
       headers.set("x-content-type-options", "nosniff");
       headers.set("referrer-policy", "strict-origin-when-cross-origin");
+      if (headers.get("content-type")?.includes("text/html")) {
+        headers.set("cache-control", "no-cache, no-transform");
+      }
       const redirect = headers.get("location");
       if (redirect) {
         const location = new URL(redirect, target);

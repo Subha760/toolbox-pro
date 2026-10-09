@@ -2,12 +2,13 @@ import { test, expect } from "@playwright/test";
 import { resolve } from "node:path";
 test("portrait matting runs locally and studio colours reach the downloaded preview", async ({
   page,
+  baseURL,
 }) => {
   test.setTimeout(90000);
   const external: string[] = [];
   page.on("request", (r) => {
     if (
-      !r.url().startsWith("http://127.0.0.1:4173") &&
+      new URL(r.url()).origin !== new URL(baseURL!).origin &&
       !/^(data|blob):/.test(r.url())
     )
       external.push(r.url());
@@ -93,13 +94,11 @@ test("photo errors do not leave unusable colour controls or spinning buttons", a
   page,
 }) => {
   await page.goto("tools/passport-photo-maker/");
-  await page
-    .getByLabel("Choose portrait")
-    .setInputFiles({
-      name: "broken.jpg",
-      mimeType: "image/jpeg",
-      buffer: Buffer.from("not an image"),
-    });
+  await page.getByLabel("Choose portrait").setInputFiles({
+    name: "broken.jpg",
+    mimeType: "image/jpeg",
+    buffer: Buffer.from("not an image"),
+  });
   await expect(page.getByRole("alert")).toBeVisible();
   await expect(
     page.getByRole("button", {
