@@ -8,7 +8,7 @@ export function localCutout(file, signal, progress = () => {}) {
     const frame = document.createElement('iframe');
     frame.hidden = true;
     frame.title = 'Private portrait processing';
-    frame.src = new URL('./portrait-ai.html', document.baseURI).href;
+    frame.src = new URL(`${import.meta.env.BASE_URL}portrait-ai.html`, location.origin).href;
     const cleanup = () => {
       clearTimeout(timer);
       window.removeEventListener('message', receive);

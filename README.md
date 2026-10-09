@@ -1,6 +1,6 @@
 # Toolinger
 
-120 free browser tools for images, PDFs, text, developer tasks, health, finance, conversions, social media and on-device AI.
+134 free browser tools for images, PDFs, text, developer tasks, health, finance, conversions, social media and on-device AI.
 
 Live site: https://subha760.github.io/toolbox-pro/
 
@@ -19,11 +19,19 @@ The browser AI dependency includes optional Node CUDA binaries, which are not ne
 
 ## Interface and privacy
 
-The directory includes search, category filters, favourite and recent tools, persistent light/dark themes and shareable `#/tool-id` URLs. Text utilities include optional examples. Switching tools clears unsaved input; Notepad explicitly saves its text on the current device. The Reset control resets the current workspace. Preferences can be cleared from Privacy choices.
+The directory includes search, category filters, favourite and recent tools, persistent light/dark themes and dedicated `/tools/tool-id/` URLs (legacy hash links still work). Text utilities include optional examples. Switching tools clears unsaved input; Notepad explicitly saves its text on the current device. The Reset control resets the current workspace. Preferences can be cleared from Privacy choices.
 
 Tool processing happens locally. AI downloads libraries and models on first use; the inputs stay in the browser. There are no active advertising or analytics scripts. Policies live in `src/policies.ts`; keep them synchronized with actual features. Support contact: lootchaser2026@gmail.com.
 
 PDF, QR, formatting and AI libraries load when needed. A service worker provides cached same-origin app assets for repeat visits. AI model downloads require internet access and a capable browser.
+
+## Pages and daily-life tools
+
+The production build generates 167 standalone pages: home, directory, categories, individual tools, daily dashboard, saved tools, guides, backups and eight policy pages. Each page has canonical metadata; policies and guides remain readable without JavaScript. See `dist/routes.json`, `dist/sitemap.xml` and `scripts/build-pages.mjs`. The deployed base path is `/toolbox-pro/`; development uses `/`.
+
+Fourteen daily-life tools include tasks, habits, expenses, shopping, focus sessions, hydration, meal planning, savings, bill splitting, recipe scaling, date arithmetic, world clocks, unit prices and packing lists. Saved data stays in local storage on this device. My space exports JSON backups and validates imported sections before asking users to restore. Meal ingredients feed the shared shopping list. Monetary calculations use integer cents; timers use elapsed deadlines. Image filters use a dedicated Web Worker.
+
+Google AdSense is prepared but disabled. See [ADSENSE.md](ADSENSE.md) for publisher IDs, ad units, certified consent management and root-domain ads.txt requirements.
 
 ## Photo studio
 
@@ -33,8 +41,8 @@ Dimension templates and framing guides do not certify compliance. Verify current
 
 ## Deployment
 
-Pushes to `main` run the GitHub Pages workflow. It checks types, unit tests, production build and all browser workflows before publishing `dist`. The production-check workflow also validates the optional backend contracts. The existing Android workflow builds a debug APK using Capacitor.
+Pushes to `main` run the GitHub Pages workflow. It checks types, unit tests, production build and all browser workflows before publishing `dist`. The production-check workflow also validates the optional backend contracts. The Android workflow builds root-path assets (`VITE_APP_BASE=/`) and a debug APK using Capacitor.
 
 ## Test limits
 
-Browser coverage exercises all 120 tools with sample input or, for the four local text AI tools, their empty-input validation. Model inference is network- and device-dependent and is checked separately. Print dialogs, official passport acceptance, every possible file format, and every browser/device are not guaranteed by automated checks.
+Browser coverage exercises all 134 tools with sample input or, for the four local text AI tools, their empty-input validation. Model inference is network- and device-dependent and is checked separately. Print dialogs, official passport acceptance, every possible file format, and every browser/device are not guaranteed by automated checks.

@@ -1,0 +1,2 @@
+# Google AdSense is not enabled. No authorised publisher inventory has been configured.
+# Add the approved publisher's seller entry at the hosting domain root before enabling ads.

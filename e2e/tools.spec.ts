@@ -1,7 +1,7 @@
 import { test, expect, Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { PDFDocument } from "pdf-lib";
-const source = readFileSync("app.tsx", "utf8");
+const source = readFileSync("src/catalog.ts", "utf8");
 const tools = [
   ...source.matchAll(
     /\{ id: "([^"]+)", name: "([^"]+)", category: "([^"]+)", description: "([^"]+)", keywords: \[[^\]]*\], engine: "([^"]+)"(?:, mode: "([^"]+)")? \}/g,
@@ -39,10 +39,10 @@ async function pdfFixture() {
   return Buffer.from(await pdf.save());
 }
 async function go(page: Page, id: string) {
-  await page.goto(`/#/${id}`);
+  await page.goto(`tools/${id}/`);
   await expect(page.getByTestId("tool-content")).toBeVisible();
 }
-for (const tool of tools)
+for (const tool of tools.filter(t=>t.engine!=="lifestyle"))
   test(`${tool.id}: user workflow`, async ({ page }) => {
     const errors: string[] = [];
     page.on("pageerror", (e) => errors.push(e.message));
@@ -328,7 +328,7 @@ for (const tool of tools)
 test("search, saved tools, themes, policy dialogs and mobile layout", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("tools/");
   await page
     .getByRole("button", {
       name: "Save Passport & ID Photo Maker",
@@ -337,7 +337,7 @@ test("search, saved tools, themes, policy dialogs and mobile layout", async ({
     .click();
   await page
     .locator(".category-sidebar")
-    .getByRole("button", { name: /Saved tools/ })
+    .getByRole("link", { name: /Saved tools/ })
     .click();
   await expect(page.locator(".catalog-card")).toHaveCount(1);
   await page.getByRole("button", { name: "Switch to dark theme" }).click();
@@ -349,22 +349,18 @@ test("search, saved tools, themes, policy dialogs and mobile layout", async ({
     .fill("nonsense-no-tool");
   await expect(page.locator(".empty-state")).toContainText("No tools found.");
   await page
-    .getByRole("button", { name: "Privacy policy", exact: true })
+    .getByRole("link", { name: "Privacy policy", exact: true }).first()
     .click();
-  await expect(page.getByRole("dialog")).toContainText(
-    "Updated 8 October 2026",
-  );
-  await page.keyboard.press("Escape");
-  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.locator("main")).toContainText("Updated 8 October 2026");
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/");
+  await page.goto("tools/");
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
     390,
   );
   await page.getByRole("button", { name: "Browse categories" }).click();
   await page
     .getByRole("dialog")
-    .getByRole("button", { name: "PDF Tools" })
+    .getByRole("link", { name: "PDF Tools" })
     .click();
   await expect(page.locator(".catalog-card")).toHaveCount(12);
   await page.screenshot({
@@ -415,7 +411,7 @@ test('examples, reset, mobile photo workspace and manifest assets', async ({page
   await page.getByLabel('Choose portrait').setInputFiles({name:'portrait.png',mimeType:'image/png',buffer:await imageFixture(page)});
   await page.getByRole('button', {name:'Create Studio Photo', exact:true}).click();
   await expect(page.getByAltText('Passport preview')).toBeVisible();
-  const manifest = await request.get('/manifest.webmanifest');
+  const manifest = await request.get('manifest.webmanifest');
   expect(manifest.ok()).toBeTruthy();
   const body = await manifest.json();
   expect(body.start_url).toBe('.');

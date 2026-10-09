@@ -1,0 +1,13 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {toCents,splitBill,savingsPlan,dateDays,addDays,streak,recipeScale,comparePrices,remainingSeconds} from '../src/daily-engine.mjs';
+import {filterPixels} from '../src/image-engine.mjs';
+test('money amounts preserve cents and reject ambiguous values',()=>{assert.equal(toCents('0.29'),29);for(const v of ['-1','1.001','NaN','Infinity','1e3',''])assert.throws(()=>toCents(v));});
+test('bill split preserves the full total including rounding',()=>{for(let n=1;n<=100;n++){const p=splitBill('19.99','12.5',n);assert.equal(p.shares.reduce((a,b)=>a+b,0),p.total);assert.ok(Math.max(...p.shares)-Math.min(...p.shares)<=1);}assert.throws(()=>splitBill('20','10','0'));});
+test('savings handles funded goals and partial months',()=>{assert.equal(savingsPlan('100','20','30').months,3);assert.equal(savingsPlan('100','150','30').remaining,0);assert.throws(()=>savingsPlan('100','0','0'));});
+test('date arithmetic handles leap days without timezone offsets',()=>{assert.equal(addDays('2024-02-28',1),'2024-02-29');assert.equal(dateDays('2024-03-01')-dateDays('2024-02-28'),2);assert.equal(addDays('2026-01-01',-1),'2025-12-31');assert.throws(()=>dateDays('2025-02-29'));});
+test('streak includes yesterday but breaks at missing days',()=>{assert.equal(streak(['2026-10-06','2026-10-07'],'2026-10-08'),2);assert.equal(streak(['2026-10-05','2026-10-07','2026-10-08'],'2026-10-08'),2);});
+test('recipe quantities support fractions and mixed numbers',()=>{assert.equal(recipeScale('1/2 cup rice\n1 1/2 cups milk',2,4),'1 cup rice\n3 cups milk');assert.throws(()=>recipeScale('1/0 cup rice',2,4));assert.throws(()=>recipeScale('some rice',2,4));});
+test('unit prices compare matching quantities',()=>{assert.equal(comparePrices('50',500,'80',1000).winner,'B');assert.equal(comparePrices('50',500,'100',1000).winner,'equal');assert.throws(()=>comparePrices('1',0,'2',1));});
+test('focus deadline compensates for delayed ticks',()=>{assert.equal(remainingSeconds(10000,5001),5);assert.equal(remainingSeconds(10000,15000),0);});
+test('image filters preserve alpha and convolution constants',()=>{const pixels=new Uint8ClampedArray(3*3*4).fill(100);for(let i=3;i<pixels.length;i+=4)pixels[i]=128;const blurred=filterPixels(pixels,3,3,'blur');assert.equal(blurred[16],100);assert.equal(blurred[19],128);const gray=filterPixels(new Uint8ClampedArray([90,30,0,77]),1,1,'grayscale');assert.deepEqual([...gray],[40,40,40,77]);});

@@ -40,6 +40,8 @@ jobs:
         run: |
           npm ci --no-audit --no-fund
           npm run check
+      - name: Build assets for the native root path
+        run: VITE_APP_BASE=/ npm run build
       - name: Add Android wrapper
         run: |
           npm install --no-save --no-audit --no-fund @capacitor/core@7 @capacitor/cli@7 @capacitor/android@7

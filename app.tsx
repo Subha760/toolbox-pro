@@ -1,259 +1,84 @@
-import React, { useEffect, useMemo, useRef, useState, useId, useContext } from "react";
+import React, {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useId,
+  useContext,
+} from "react";
 import { validatePhoto } from "./src/background-removal.mjs";
 import { localCutout } from "./src/local-cutout.mjs";
 import type { PDFDocument } from "pdf-lib";
 
 import { LEGAL_CONTENT } from "./src/policies";
-import { parsePageSelection, securePassword, portraitLayout, sheetLayout } from "./src/tool-utils.mjs";
+import {
+  parsePageSelection,
+  securePassword,
+  portraitLayout,
+  sheetLayout,
+} from "./src/tool-utils.mjs";
 
-type CategoryId =
-  | "image"
-  | "pdf"
-  | "text"
-  | "document"
-  | "developer"
-  | "health"
-  | "finance"
-  | "converter"
-  | "facebook"
-  | "instagram"
-  | "youtube"
-  | "ai"
-  | "utility";
-
-type ToolEngine =
-  | "text-transform"
-  | "text-analysis"
-  | "text-lines"
-  | "find-replace"
-  | "markdown-preview"
-  | "json-tool"
-  | "base64"
-  | "url-encode"
-  | "uuid"
-  | "password"
-  | "hash"
-  | "timestamp"
-  | "regex"
-  | "color"
-  | "simple-calculator"
-  | "bmi"
-  | "bmr"
-  | "calorie"
-  | "water"
-  | "body-fat"
-  | "unit"
-  | "qr"
-  | "coin"
-  | "notepad"
-  | "image"
-  | "passport"
-  | "pdf"
-  | "social"
-  | "local-ai";
-
-type ToolConfig = {
-  id: string;
-  name: string;
-  category: CategoryId;
-  description: string;
-  keywords: string[];
-  engine: ToolEngine;
-  mode?: string;
-};
-
-const TOOLINGER_CONFIG = {
-  ads: {
-    enabled: false,
-    network: "monetag",
-  },
-} as const;
-
-const CATEGORY_LABELS: Record<CategoryId, string> = {
-  image: "Image Tools",
-  pdf: "PDF Tools",
-  text: "Text Tools",
-  document: "Document Tools",
-  developer: "Developer Tools",
-  health: "Health Tools",
-  finance: "Finance Tools",
-  converter: "Unit Converters",
-  facebook: "Facebook Tools",
-  instagram: "Instagram Tools",
-  youtube: "YouTube Tools",
-  ai: "Local AI Tools",
-  utility: "Utility Tools",
-};
-
-const LEGAL_PAGES = [
-  "About",
-  "Privacy Policy",
-  "Cookie Policy",
-  "Terms and Conditions",
-  "Disclaimer",
-  "Contact",
-] as const;
-
-type LegalPage = (typeof LEGAL_PAGES)[number];
-
-const TOOL_LIST: ToolConfig[] = [
-  { id: "qr-code-generator", name: "QR Code Generator", category: "image", description: "Create QR codes instantly.", keywords: ["qr", "scan"], engine: "qr" },
-  { id: "passport-photo-maker", name: "Passport & ID Photo Maker", category: "image", description: "Prepare ID photos with studio backgrounds.", keywords: ["passport", "id", "photo"], engine: "passport" },
-  { id: "image-to-pdf", name: "Image to PDF", category: "image", description: "Convert one or more images to PDF.", keywords: ["image", "pdf"], engine: "image", mode: "image-to-pdf" },
-  { id: "image-resizer", name: "Image Resizer", category: "image", description: "Resize image dimensions.", keywords: ["resize"], engine: "image", mode: "resize" },
-  { id: "image-format-converter", name: "Image Format Converter", category: "image", description: "Convert PNG/JPG/WEBP.", keywords: ["format", "converter"], engine: "image", mode: "format" },
-  { id: "image-compressor", name: "Image Compressor", category: "image", description: "Reduce file size with quality controls.", keywords: ["compress"], engine: "image", mode: "compress" },
-  { id: "grayscale-filter", name: "Grayscale Filter", category: "image", description: "Apply grayscale effect.", keywords: ["grayscale"], engine: "image", mode: "grayscale" },
-  { id: "sepia-filter", name: "Sepia Filter", category: "image", description: "Apply sepia effect.", keywords: ["sepia"], engine: "image", mode: "sepia" },
-  { id: "brightness-contrast", name: "Brightness & Contrast", category: "image", description: "Adjust brightness and contrast.", keywords: ["brightness", "contrast"], engine: "image", mode: "brightness-contrast" },
-  { id: "rotate-image", name: "Rotate Image", category: "image", description: "Rotate by angle.", keywords: ["rotate"], engine: "image", mode: "rotate" },
-  { id: "flip-image", name: "Flip Image", category: "image", description: "Flip horizontally or vertically.", keywords: ["flip"], engine: "image", mode: "flip" },
-  { id: "image-base64", name: "Image to Base64", category: "image", description: "Encode image as Base64.", keywords: ["base64"], engine: "image", mode: "base64" },
-  { id: "image-cropper", name: "Image Cropper", category: "image", description: "Crop image center area.", keywords: ["crop"], engine: "image", mode: "crop" },
-  { id: "quote-card-generator", name: "Quote Card Generator", category: "image", description: "Create a quote image.", keywords: ["quote", "card"], engine: "image", mode: "quote" },
-  { id: "image-watermark", name: "Image Watermark", category: "image", description: "Add text watermark.", keywords: ["watermark"], engine: "image", mode: "watermark" },
-  { id: "image-metadata", name: "Image Metadata Viewer", category: "image", description: "View basic metadata.", keywords: ["metadata"], engine: "image", mode: "metadata" },
-  { id: "color-picker-image", name: "Color Picker", category: "image", description: "Pick colors from image.", keywords: ["color", "picker"], engine: "image", mode: "color-picker" },
-  { id: "image-blur", name: "Image Blur", category: "image", description: "Apply blur.", keywords: ["blur"], engine: "image", mode: "blur" },
-  { id: "image-sharpen", name: "Image Sharpen", category: "image", description: "Sharpen image.", keywords: ["sharpen"], engine: "image", mode: "sharpen" },
-  { id: "collage-maker", name: "Collage Maker", category: "image", description: "Combine up to four images.", keywords: ["collage"], engine: "image", mode: "collage" },
-
-  { id: "merge-pdf", name: "Merge PDF", category: "pdf", description: "Merge multiple PDFs.", keywords: ["merge", "pdf"], engine: "pdf", mode: "merge" },
-  { id: "split-pdf", name: "Split PDF", category: "pdf", description: "Split PDF by page range.", keywords: ["split"], engine: "pdf", mode: "split" },
-  { id: "compress-pdf", name: "Compress PDF", category: "pdf", description: "Re-save PDF with stream compression.", keywords: ["compress"], engine: "pdf", mode: "compress" },
-  { id: "pdf-rotate", name: "Rotate PDF", category: "pdf", description: "Rotate all pages.", keywords: ["rotate"], engine: "pdf", mode: "rotate" },
-  { id: "delete-pdf-pages", name: "Delete PDF Pages", category: "pdf", description: "Remove selected pages.", keywords: ["delete", "pages"], engine: "pdf", mode: "delete-pages" },
-  { id: "extract-pdf-pages", name: "Extract PDF Pages", category: "pdf", description: "Extract selected pages.", keywords: ["extract"], engine: "pdf", mode: "extract-pages" },
-  { id: "rearrange-pdf-pages", name: "Rearrange PDF Pages", category: "pdf", description: "Reorder pages.", keywords: ["rearrange"], engine: "pdf", mode: "rearrange-pages" },
-  { id: "pdf-metadata-viewer", name: "PDF Metadata Viewer", category: "pdf", description: "View metadata and page count.", keywords: ["metadata"], engine: "pdf", mode: "metadata" },
-  { id: "add-page-numbers", name: "Add Page Numbers", category: "pdf", description: "Insert page numbers.", keywords: ["page numbers"], engine: "pdf", mode: "page-numbers" },
-  { id: "text-to-pdf", name: "Text to PDF", category: "pdf", description: "Convert text to PDF.", keywords: ["text", "pdf"], engine: "pdf", mode: "text-to-pdf" },
-  { id: "html-to-pdf", name: "HTML to PDF", category: "pdf", description: "Print clean HTML as PDF.", keywords: ["html", "pdf"], engine: "pdf", mode: "html-to-pdf" },
-  { id: "pdf-preview", name: "PDF Preview", category: "pdf", description: "Preview a PDF in browser.", keywords: ["preview"], engine: "pdf", mode: "preview" },
-
-  { id: "word-counter", name: "Word Counter", category: "text", description: "Count words and paragraphs.", keywords: ["words"], engine: "text-analysis", mode: "words" },
-  { id: "character-counter", name: "Character Counter", category: "text", description: "Count characters with and without spaces.", keywords: ["characters"], engine: "text-analysis", mode: "characters" },
-  { id: "line-counter", name: "Line Counter", category: "text", description: "Count lines quickly.", keywords: ["line"], engine: "text-analysis", mode: "lines" },
-  { id: "case-converter", name: "Case Converter", category: "text", description: "Convert text case.", keywords: ["uppercase", "lowercase"], engine: "text-transform", mode: "case" },
-  { id: "remove-extra-spaces", name: "Remove Extra Spaces", category: "text", description: "Normalize spacing.", keywords: ["spaces"], engine: "text-transform", mode: "spaces" },
-  { id: "find-replace", name: "Find and Replace", category: "text", description: "Find and replace text globally.", keywords: ["replace"], engine: "find-replace" },
-  { id: "duplicate-line-remover", name: "Duplicate Line Remover", category: "text", description: "Keep only unique lines.", keywords: ["duplicate", "lines"], engine: "text-lines", mode: "unique" },
-  { id: "text-sorter", name: "Text Sorter", category: "text", description: "Sort lines alphabetically.", keywords: ["sort"], engine: "text-lines", mode: "sort" },
-  { id: "text-reverser", name: "Text Reverser", category: "text", description: "Reverse text and lines.", keywords: ["reverse"], engine: "text-transform", mode: "reverse" },
-  { id: "markdown-preview", name: "Markdown Preview", category: "text", description: "Live markdown preview.", keywords: ["markdown"], engine: "markdown-preview" },
-  { id: "sentence-counter", name: "Sentence Counter", category: "text", description: "Count sentence estimates.", keywords: ["sentence"], engine: "text-analysis", mode: "sentences" },
-  { id: "reading-time", name: "Reading Time Estimator", category: "text", description: "Estimate reading time.", keywords: ["reading", "time"], engine: "text-analysis", mode: "reading" },
-  { id: "slug-generator", name: "Slug Generator", category: "text", description: "Create URL-friendly slugs.", keywords: ["slug", "seo"], engine: "text-transform", mode: "slug" },
-  { id: "text-cleaner", name: "Text Cleaner", category: "text", description: "Strip symbols and normalize spaces.", keywords: ["clean"], engine: "text-transform", mode: "clean" },
-
-  { id: "notepad", name: "Notepad", category: "document", description: "Simple browser notepad with local autosave.", keywords: ["note", "pad"], engine: "notepad" },
-  { id: "text-to-pdf-doc", name: "Text to PDF", category: "document", description: "Convert typed text to PDF.", keywords: ["text", "pdf"], engine: "pdf", mode: "text-to-pdf" },
-  { id: "json-formatter-doc", name: "JSON Formatter", category: "document", description: "Prettify JSON documents.", keywords: ["json"], engine: "json-tool", mode: "format" },
-  { id: "json-validator-doc", name: "JSON Validator", category: "document", description: "Validate JSON syntax.", keywords: ["json", "validate"], engine: "json-tool", mode: "validate" },
-  { id: "txt-downloader", name: "Quick TXT Downloader", category: "document", description: "Download plain text as TXT.", keywords: ["txt"], engine: "text-transform", mode: "txt-download" },
-  { id: "html-formatter-doc", name: "HTML Formatter", category: "document", description: "Format messy HTML.", keywords: ["html", "format"], engine: "text-transform", mode: "html-format" },
-  { id: "css-formatter-doc", name: "CSS Formatter", category: "document", description: "Format CSS blocks.", keywords: ["css", "format"], engine: "text-transform", mode: "css-format" },
-  { id: "js-formatter-doc", name: "JavaScript Formatter", category: "document", description: "Format JavaScript text.", keywords: ["javascript", "format"], engine: "text-transform", mode: "js-format" },
-
-  { id: "json-formatter", name: "JSON Formatter", category: "developer", description: "Beautify JSON.", keywords: ["json"], engine: "json-tool", mode: "format" },
-  { id: "json-validator", name: "JSON Validator", category: "developer", description: "Validate JSON.", keywords: ["json"], engine: "json-tool", mode: "validate" },
-  { id: "base64-encoder", name: "Base64 Encoder", category: "developer", description: "Encode text to Base64.", keywords: ["base64", "encode"], engine: "base64", mode: "encode" },
-  { id: "base64-decoder", name: "Base64 Decoder", category: "developer", description: "Decode Base64 to text.", keywords: ["base64", "decode"], engine: "base64", mode: "decode" },
-  { id: "url-encoder", name: "URL Encoder", category: "developer", description: "Encode URL components.", keywords: ["url"], engine: "url-encode", mode: "encode" },
-  { id: "url-decoder", name: "URL Decoder", category: "developer", description: "Decode URL components.", keywords: ["url"], engine: "url-encode", mode: "decode" },
-  { id: "html-formatter", name: "HTML Formatter", category: "developer", description: "Format HTML quickly.", keywords: ["html"], engine: "text-transform", mode: "html-format" },
-  { id: "css-formatter", name: "CSS Formatter", category: "developer", description: "Format CSS quickly.", keywords: ["css"], engine: "text-transform", mode: "css-format" },
-  { id: "javascript-formatter", name: "JavaScript Formatter", category: "developer", description: "Format JavaScript quickly.", keywords: ["javascript"], engine: "text-transform", mode: "js-format" },
-  { id: "uuid-generator", name: "UUID Generator", category: "developer", description: "Generate RFC4122 UUIDs.", keywords: ["uuid"], engine: "uuid" },
-  { id: "password-generator", name: "Password Generator", category: "developer", description: "Generate secure passwords.", keywords: ["password"], engine: "password" },
-  { id: "hash-generator", name: "Hash Generator", category: "developer", description: "Create SHA hashes.", keywords: ["hash", "sha"], engine: "hash" },
-  { id: "timestamp-converter", name: "Timestamp Converter", category: "developer", description: "Convert date and Unix timestamp.", keywords: ["timestamp", "unix"], engine: "timestamp" },
-  { id: "regex-tester", name: "Regex Tester", category: "developer", description: "Test regular expressions.", keywords: ["regex"], engine: "regex" },
-  { id: "color-converter", name: "Color Converter", category: "developer", description: "HEX/RGB conversion.", keywords: ["color", "hex", "rgb"], engine: "color" },
-
-  { id: "bmi-calculator", name: "BMI Calculator", category: "health", description: "Body Mass Index with guidance.", keywords: ["bmi", "weight"], engine: "bmi" },
-  { id: "bmr-calculator", name: "BMR Calculator", category: "health", description: "Basal metabolic rate estimator.", keywords: ["bmr"], engine: "bmr" },
-  { id: "calorie-calculator", name: "Calorie Calculator", category: "health", description: "Daily calorie needs by goal.", keywords: ["calorie"], engine: "calorie" },
-  { id: "water-intake-calculator", name: "Water Intake Calculator", category: "health", description: "Daily hydration estimator.", keywords: ["water"], engine: "water" },
-  { id: "body-fat-estimator", name: "Body Fat Estimator", category: "health", description: "Estimate body fat percentage.", keywords: ["body fat"], engine: "body-fat" },
-
-  { id: "emi-calculator", name: "EMI Calculator", category: "finance", description: "Monthly EMI estimate.", keywords: ["emi", "loan"], engine: "simple-calculator", mode: "emi" },
-  { id: "simple-interest", name: "Simple Interest Calculator", category: "finance", description: "Compute simple interest.", keywords: ["interest"], engine: "simple-calculator", mode: "simple-interest" },
-  { id: "compound-interest", name: "Compound Interest Calculator", category: "finance", description: "Future value with compounding.", keywords: ["compound"], engine: "simple-calculator", mode: "compound-interest" },
-  { id: "loan-calculator", name: "Loan Calculator", category: "finance", description: "Loan payment and total cost.", keywords: ["loan"], engine: "simple-calculator", mode: "loan" },
-  { id: "discount-calculator", name: "Discount Calculator", category: "finance", description: "Discounted price and savings.", keywords: ["discount"], engine: "simple-calculator", mode: "discount" },
-  { id: "gst-calculator", name: "GST Calculator", category: "finance", description: "GST add/remove calculator.", keywords: ["gst", "tax"], engine: "simple-calculator", mode: "gst" },
-  { id: "profit-margin", name: "Profit Margin Calculator", category: "finance", description: "Profit, margin, markup.", keywords: ["profit", "margin"], engine: "simple-calculator", mode: "profit" },
-  { id: "percentage-calculator", name: "Percentage Calculator", category: "finance", description: "Percent change and value.", keywords: ["percentage"], engine: "simple-calculator", mode: "percentage" },
-
-  { id: "length-converter", name: "Length Converter", category: "converter", description: "Convert length units.", keywords: ["length"], engine: "unit", mode: "length" },
-  { id: "weight-converter", name: "Weight Converter", category: "converter", description: "Convert mass units.", keywords: ["weight"], engine: "unit", mode: "weight" },
-  { id: "temperature-converter", name: "Temperature Converter", category: "converter", description: "Convert temperature units.", keywords: ["temperature"], engine: "unit", mode: "temperature" },
-  { id: "area-converter", name: "Area Converter", category: "converter", description: "Convert area units.", keywords: ["area"], engine: "unit", mode: "area" },
-  { id: "volume-converter", name: "Volume Converter", category: "converter", description: "Convert volume units.", keywords: ["volume"], engine: "unit", mode: "volume" },
-  { id: "speed-converter", name: "Speed Converter", category: "converter", description: "Convert speed units.", keywords: ["speed"], engine: "unit", mode: "speed" },
-  { id: "storage-converter", name: "Data Storage Converter", category: "converter", description: "Convert storage units.", keywords: ["data", "storage"], engine: "unit", mode: "storage" },
-  { id: "time-converter", name: "Time Converter", category: "converter", description: "Convert time units.", keywords: ["time"], engine: "unit", mode: "time" },
-  { id: "energy-converter", name: "Energy Converter", category: "converter", description: "Convert energy units.", keywords: ["energy"], engine: "unit", mode: "energy" },
-  { id: "pressure-converter", name: "Pressure Converter", category: "converter", description: "Convert pressure units.", keywords: ["pressure"], engine: "unit", mode: "pressure" },
-
-  { id: "facebook-post-formatter", name: "Facebook Post Formatter", category: "facebook", description: "Structure readable posts.", keywords: ["facebook", "post"], engine: "social", mode: "post" },
-  { id: "facebook-caption-generator", name: "Facebook Caption Generator", category: "facebook", description: "Generate polished caption blocks.", keywords: ["caption"], engine: "social", mode: "caption" },
-  { id: "facebook-hashtag-helper", name: "Facebook Hashtag Helper", category: "facebook", description: "Clean and organize hashtags.", keywords: ["hashtag"], engine: "social", mode: "hashtags" },
-  { id: "facebook-engagement-planner", name: "Engagement Time Planner", category: "facebook", description: "Generate post timing plan.", keywords: ["engagement", "planner"], engine: "social", mode: "planner" },
-  { id: "facebook-dimension-guide", name: "Image Dimension Guide", category: "facebook", description: "Quick visual size references.", keywords: ["dimension"], engine: "social", mode: "dimensions" },
-
-  { id: "instagram-caption-formatter", name: "Caption Formatter", category: "instagram", description: "Format Instagram captions.", keywords: ["instagram", "caption"], engine: "social", mode: "caption" },
-  { id: "instagram-hashtag-organizer", name: "Hashtag Organizer", category: "instagram", description: "Sort hashtags by uniqueness.", keywords: ["hashtags"], engine: "social", mode: "hashtags" },
-  { id: "instagram-bio-counter", name: "Bio Character Counter", category: "instagram", description: "Track bio length.", keywords: ["bio", "counter"], engine: "social", mode: "bio" },
-  { id: "instagram-dimension-helper", name: "Image Dimension Helper", category: "instagram", description: "Sizes for posts/reels/stories.", keywords: ["dimension"], engine: "social", mode: "dimensions" },
-  { id: "instagram-reel-caption", name: "Reel Caption Helper", category: "instagram", description: "Build concise reel captions.", keywords: ["reel", "caption"], engine: "social", mode: "reel" },
-
-  { id: "youtube-title-counter", name: "Title Character Counter", category: "youtube", description: "Track title length.", keywords: ["youtube", "title"], engine: "social", mode: "yt-title" },
-  { id: "youtube-description-formatter", name: "Description Formatter", category: "youtube", description: "Format long descriptions.", keywords: ["description"], engine: "social", mode: "yt-description" },
-  { id: "youtube-tag-organizer", name: "Tag Organizer", category: "youtube", description: "Clean and sort tags.", keywords: ["tags"], engine: "social", mode: "yt-tags" },
-  { id: "youtube-thumbnail-dimensions", name: "Thumbnail Dimension Helper", category: "youtube", description: "Thumbnail size references.", keywords: ["thumbnail"], engine: "social", mode: "dimensions" },
-  { id: "youtube-timestamp-generator", name: "Timestamp Generator", category: "youtube", description: "Generate chapter timestamps.", keywords: ["timestamp"], engine: "social", mode: "yt-timestamps" },
-  { id: "youtube-template-generator", name: "Video Description Template Generator", category: "youtube", description: "Create repeatable templates.", keywords: ["template"], engine: "social", mode: "yt-template" },
-
-  { id: "ai-sentiment", name: "AI Sentiment Analyzer", category: "ai", description: "Detect positive or negative tone with a private on-device model.", keywords: ["ai", "sentiment", "tone"], engine: "local-ai", mode: "sentiment" },
-  { id: "ai-semantic-similarity", name: "AI Semantic Similarity", category: "ai", description: "Compare the meaning of two passages locally.", keywords: ["ai", "semantic", "similarity"], engine: "local-ai", mode: "similarity" },
-  { id: "ai-extractive-summary", name: "AI Extractive Summarizer", category: "ai", description: "Select the most meaningful sentences without uploading your text.", keywords: ["ai", "summary", "summarize"], engine: "local-ai", mode: "summary" },
-  { id: "ai-keyword-extractor", name: "AI Keyword Extractor", category: "ai", description: "Find semantically important keywords using local embeddings.", keywords: ["ai", "keyword", "seo"], engine: "local-ai", mode: "keywords" },
-
-  { id: "coin-flip", name: "Coin Flip", category: "utility", description: "Animated 3D coin flip with sound.", keywords: ["coin", "flip"], engine: "coin" },
-  { id: "random-number-generator", name: "Random Number Generator", category: "utility", description: "Generate random numbers in range.", keywords: ["random", "number"], engine: "simple-calculator", mode: "random-number" },
-  { id: "random-name-picker", name: "Random Name Picker", category: "utility", description: "Pick random entry from list.", keywords: ["random", "picker"], engine: "text-lines", mode: "pick" },
-  { id: "countdown-helper", name: "Countdown Helper", category: "utility", description: "Days until selected date.", keywords: ["countdown"], engine: "simple-calculator", mode: "countdown" },
-  { id: "age-calculator", name: "Age Calculator", category: "utility", description: "Calculate age from birth date.", keywords: ["age"], engine: "simple-calculator", mode: "age" },
-  { id: "tip-calculator", name: "Tip Calculator", category: "utility", description: "Calculate tips and split bill.", keywords: ["tip", "bill"], engine: "simple-calculator", mode: "tip" },
-  { id: "binary-converter", name: "Binary Converter", category: "utility", description: "Convert text to/from binary.", keywords: ["binary"], engine: "text-transform", mode: "binary" },
-  { id: "lorem-generator", name: "Lorem Ipsum Generator", category: "utility", description: "Generate sample paragraphs.", keywords: ["lorem"], engine: "text-transform", mode: "lorem" },
-];
-
+import {
+  TOOL_LIST,
+  CATEGORY_LABELS,
+  type CategoryId,
+  type ToolConfig,
+} from "./src/catalog";
+import { LifestyleTool, DailyHub, MySpace } from "./src/lifestyle";
+import { useRoute, navigate, routeHref, assetUrl } from "./src/router";
+import { GUIDES } from "./src/guides";
+import { ConsentControls, AdPlacement } from "./src/advertising";
 const UNIT_OPTIONS: Record<
   string,
-  { units: string[]; toBase: (value: number, unit: string) => number; fromBase: (value: number, unit: string) => number }
+  {
+    units: string[];
+    toBase: (value: number, unit: string) => number;
+    fromBase: (value: number, unit: string) => number;
+  }
 > = {
   length: {
     units: ["meter", "kilometer", "centimeter", "mile", "foot", "inch"],
     toBase: (value, unit) => {
-      const map: Record<string, number> = { meter: 1, kilometer: 1000, centimeter: 0.01, mile: 1609.344, foot: 0.3048, inch: 0.0254 };
+      const map: Record<string, number> = {
+        meter: 1,
+        kilometer: 1000,
+        centimeter: 0.01,
+        mile: 1609.344,
+        foot: 0.3048,
+        inch: 0.0254,
+      };
       return value * map[unit];
     },
     fromBase: (value, unit) => {
-      const map: Record<string, number> = { meter: 1, kilometer: 0.001, centimeter: 100, mile: 0.000621371, foot: 3.28084, inch: 39.3701 };
+      const map: Record<string, number> = {
+        meter: 1,
+        kilometer: 0.001,
+        centimeter: 100,
+        mile: 0.000621371,
+        foot: 3.28084,
+        inch: 39.3701,
+      };
       return value * map[unit];
     },
   },
   weight: {
     units: ["kilogram", "gram", "pound", "ounce"],
     toBase: (value, unit) => {
-      const map: Record<string, number> = { kilogram: 1, gram: 0.001, pound: 0.453592, ounce: 0.0283495 };
+      const map: Record<string, number> = {
+        kilogram: 1,
+        gram: 0.001,
+        pound: 0.453592,
+        ounce: 0.0283495,
+      };
       return value * map[unit];
     },
     fromBase: (value, unit) => {
-      const map: Record<string, number> = { kilogram: 1, gram: 1000, pound: 2.20462, ounce: 35.274 };
+      const map: Record<string, number> = {
+        kilogram: 1,
+        gram: 1000,
+        pound: 2.20462,
+        ounce: 35.274,
+      };
       return value * map[unit];
     },
   },
@@ -273,29 +98,53 @@ const UNIT_OPTIONS: Record<
   area: {
     units: ["sq-meter", "sq-kilometer", "sq-foot", "acre"],
     toBase: (value, unit) => {
-      const map: Record<string, number> = { "sq-meter": 1, "sq-kilometer": 1_000_000, "sq-foot": 0.092903, acre: 4046.86 };
+      const map: Record<string, number> = {
+        "sq-meter": 1,
+        "sq-kilometer": 1_000_000,
+        "sq-foot": 0.092903,
+        acre: 4046.86,
+      };
       return value * map[unit];
     },
     fromBase: (value, unit) => {
-      const map: Record<string, number> = { "sq-meter": 1, "sq-kilometer": 0.000001, "sq-foot": 10.7639, acre: 0.000247105 };
+      const map: Record<string, number> = {
+        "sq-meter": 1,
+        "sq-kilometer": 0.000001,
+        "sq-foot": 10.7639,
+        acre: 0.000247105,
+      };
       return value * map[unit];
     },
   },
   volume: {
     units: ["liter", "milliliter", "cubic-meter", "gallon"],
     toBase: (value, unit) => {
-      const map: Record<string, number> = { liter: 1, milliliter: 0.001, "cubic-meter": 1000, gallon: 3.78541 };
+      const map: Record<string, number> = {
+        liter: 1,
+        milliliter: 0.001,
+        "cubic-meter": 1000,
+        gallon: 3.78541,
+      };
       return value * map[unit];
     },
     fromBase: (value, unit) => {
-      const map: Record<string, number> = { liter: 1, milliliter: 1000, "cubic-meter": 0.001, gallon: 0.264172 };
+      const map: Record<string, number> = {
+        liter: 1,
+        milliliter: 1000,
+        "cubic-meter": 0.001,
+        gallon: 0.264172,
+      };
       return value * map[unit];
     },
   },
   speed: {
     units: ["mps", "kph", "mph"],
     toBase: (value, unit) => {
-      const map: Record<string, number> = { mps: 1, kph: 0.277778, mph: 0.44704 };
+      const map: Record<string, number> = {
+        mps: 1,
+        kph: 0.277778,
+        mph: 0.44704,
+      };
       return value * map[unit];
     },
     fromBase: (value, unit) => {
@@ -306,44 +155,86 @@ const UNIT_OPTIONS: Record<
   storage: {
     units: ["byte", "kb", "mb", "gb", "tb"],
     toBase: (value, unit) => {
-      const map: Record<string, number> = { byte: 1, kb: 1024, mb: 1024 ** 2, gb: 1024 ** 3, tb: 1024 ** 4 };
+      const map: Record<string, number> = {
+        byte: 1,
+        kb: 1024,
+        mb: 1024 ** 2,
+        gb: 1024 ** 3,
+        tb: 1024 ** 4,
+      };
       return value * map[unit];
     },
     fromBase: (value, unit) => {
-      const map: Record<string, number> = { byte: 1, kb: 1 / 1024, mb: 1 / 1024 ** 2, gb: 1 / 1024 ** 3, tb: 1 / 1024 ** 4 };
+      const map: Record<string, number> = {
+        byte: 1,
+        kb: 1 / 1024,
+        mb: 1 / 1024 ** 2,
+        gb: 1 / 1024 ** 3,
+        tb: 1 / 1024 ** 4,
+      };
       return value * map[unit];
     },
   },
   time: {
     units: ["second", "minute", "hour", "day"],
     toBase: (value, unit) => {
-      const map: Record<string, number> = { second: 1, minute: 60, hour: 3600, day: 86400 };
+      const map: Record<string, number> = {
+        second: 1,
+        minute: 60,
+        hour: 3600,
+        day: 86400,
+      };
       return value * map[unit];
     },
     fromBase: (value, unit) => {
-      const map: Record<string, number> = { second: 1, minute: 1 / 60, hour: 1 / 3600, day: 1 / 86400 };
+      const map: Record<string, number> = {
+        second: 1,
+        minute: 1 / 60,
+        hour: 1 / 3600,
+        day: 1 / 86400,
+      };
       return value * map[unit];
     },
   },
   energy: {
     units: ["joule", "kilojoule", "calorie", "kwh"],
     toBase: (value, unit) => {
-      const map: Record<string, number> = { joule: 1, kilojoule: 1000, calorie: 4.184, kwh: 3_600_000 };
+      const map: Record<string, number> = {
+        joule: 1,
+        kilojoule: 1000,
+        calorie: 4.184,
+        kwh: 3_600_000,
+      };
       return value * map[unit];
     },
     fromBase: (value, unit) => {
-      const map: Record<string, number> = { joule: 1, kilojoule: 0.001, calorie: 0.239006, kwh: 1 / 3_600_000 };
+      const map: Record<string, number> = {
+        joule: 1,
+        kilojoule: 0.001,
+        calorie: 0.239006,
+        kwh: 1 / 3_600_000,
+      };
       return value * map[unit];
     },
   },
   pressure: {
     units: ["pascal", "bar", "psi", "atm"],
     toBase: (value, unit) => {
-      const map: Record<string, number> = { pascal: 1, bar: 100000, psi: 6894.76, atm: 101325 };
+      const map: Record<string, number> = {
+        pascal: 1,
+        bar: 100000,
+        psi: 6894.76,
+        atm: 101325,
+      };
       return value * map[unit];
     },
     fromBase: (value, unit) => {
-      const map: Record<string, number> = { pascal: 1, bar: 0.00001, psi: 0.000145038, atm: 0.00000986923 };
+      const map: Record<string, number> = {
+        pascal: 1,
+        bar: 0.00001,
+        psi: 0.000145038,
+        atm: 0.00000986923,
+      };
       return value * map[unit];
     },
   },
@@ -393,15 +284,6 @@ const UNIT_LABELS: Record<string, string> = {
   atm: "Atmospheres",
 };
 
-const FEATURED_TOOL_IDS = [
-  "image-resizer",
-  "passport-photo-maker",
-  "compress-pdf",
-  "password-generator",
-  "image-to-pdf",
-  "word-counter",
-];
-
 const inputClass =
   "w-full rounded-xl border border-slate-200 bg-white/90 px-3 py-2.5 text-sm text-slate-900 shadow-inner outline-none transition placeholder:text-slate-400 focus:border-violet-500 focus:ring-4 focus:ring-violet-200";
 
@@ -417,15 +299,6 @@ const glassPanel =
 const resultBox =
   "rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm text-slate-700";
 
-const toolListBtn =
-  "w-full rounded-xl border border-slate-200 bg-white/90 px-3 py-3 text-left text-sm font-medium text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-violet-300 hover:text-violet-700";
-
-const metricBox =
-  "rounded-2xl border border-white/70 bg-white/70 px-4 py-3 shadow-sm backdrop-blur";
-
-const adSlot =
-  "mt-5 rounded-2xl border border-dashed border-slate-300 bg-white/70 px-4 py-6 text-center text-[11px] font-semibold uppercase tracking-[0.35em] text-slate-400";
-
 const toTitleCase = (value: string) =>
   value
     .toLowerCase()
@@ -439,7 +312,8 @@ const toSentenceCase = (value: string) => {
   return trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase();
 };
 
-const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
+const clamp = (value: number, min: number, max: number) =>
+  Math.max(min, Math.min(max, value));
 
 const formatNumber = (value: number) =>
   Number.isFinite(value)
@@ -550,15 +424,37 @@ const generateUuid = () => {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 };
 
-const randomPassword = (length: number, upper: boolean, lower: boolean, numbers: boolean, symbols: boolean) =>
-  securePassword(length, [upper && "ABCDEFGHIJKLMNOPQRSTUVWXYZ", lower && "abcdefghijklmnopqrstuvwxyz", numbers && "0123456789", symbols && "!@#$%^&*()-_=+[]{};:,.?/"].filter(Boolean));
+const randomPassword = (
+  length: number,
+  upper: boolean,
+  lower: boolean,
+  numbers: boolean,
+  symbols: boolean,
+) =>
+  securePassword(
+    length,
+    [
+      upper && "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+      lower && "abcdefghijklmnopqrstuvwxyz",
+      numbers && "0123456789",
+      symbols && "!@#$%^&*()-_=+[]{};:,.?/",
+    ].filter(Boolean),
+  );
 
-const canvasToBlob = (canvas: HTMLCanvasElement, type = "image/png", quality?: number) =>
+const canvasToBlob = (
+  canvas: HTMLCanvasElement,
+  type = "image/png",
+  quality?: number,
+) =>
   new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob((blob) => {
-      if (blob) resolve(blob);
-      else reject(new Error("Canvas export failed"));
-    }, type, quality);
+    canvas.toBlob(
+      (blob) => {
+        if (blob) resolve(blob);
+        else reject(new Error("Canvas export failed"));
+      },
+      type,
+      quality,
+    );
   });
 
 const drawImageToCanvas = async (file: File): Promise<HTMLCanvasElement> => {
@@ -579,7 +475,7 @@ const drawImageCover = (
   x: number,
   y: number,
   width: number,
-  height: number
+  height: number,
 ) => {
   const scale = Math.max(width / image.width, height / image.height);
   const drawWidth = image.width * scale;
@@ -610,7 +506,13 @@ function ToolPanel({ children }: { children: React.ReactNode }) {
   return <div className={`${glassPanel} tool-panel space-y-4`}>{children}</div>;
 }
 
-function CopyButton({ text, label = "Copy" }: { text: string; label?: string }) {
+function CopyButton({
+  text,
+  label = "Copy",
+}: {
+  text: string;
+  label?: string;
+}) {
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState(false);
 
@@ -621,7 +523,13 @@ function CopyButton({ text, label = "Copy" }: { text: string; label?: string }) 
       type="button"
       className={secondaryBtn}
       onClick={async () => {
-        try { await copyToClipboard(text); setCopyError(false); } catch { setCopyError(true); return; }
+        try {
+          await copyToClipboard(text);
+          setCopyError(false);
+        } catch {
+          setCopyError(true);
+          return;
+        }
         setCopied(true);
         window.setTimeout(() => setCopied(false), 1400);
       }}
@@ -631,12 +539,30 @@ function CopyButton({ text, label = "Copy" }: { text: string; label?: string }) 
   );
 }
 
-function Field({ label, children, className = "" }: { label: string; children: React.ReactNode; className?: string }) {
+function Field({
+  label,
+  children,
+  className = "",
+}: {
+  label: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
   const id = useId();
   return (
     <div className={`block text-sm font-medium text-slate-700 ${className}`}>
       <label htmlFor={id}>{label}</label>
-      <div className="mt-1">{React.Children.map(children, child => React.isValidElement(child) && typeof child.type === "string" && ["input", "textarea", "select"].includes(child.type) ? React.cloneElement(child as React.ReactElement<{id?: string}>, {id}) : child)}</div>
+      <div className="mt-1">
+        {React.Children.map(children, (child) =>
+          React.isValidElement(child) &&
+          typeof child.type === "string" &&
+          ["input", "textarea", "select"].includes(child.type)
+            ? React.cloneElement(child as React.ReactElement<{ id?: string }>, {
+                id,
+              })
+            : child,
+        )}
+      </div>
     </div>
   );
 }
@@ -653,7 +579,10 @@ function TextTransformTool({ mode }: { mode: string }) {
         setOutput("Please enter text to download.");
         return;
       }
-      downloadBlob(new Blob([input], { type: "text/plain;charset=utf-8" }), "toolinger-note.txt");
+      downloadBlob(
+        new Blob([input], { type: "text/plain;charset=utf-8" }),
+        "toolinger-note.txt",
+      );
       setOutput("TXT downloaded.");
       return;
     }
@@ -678,7 +607,7 @@ function TextTransformTool({ mode }: { mode: string }) {
             `lowercase:\n${input.toLowerCase()}`,
             `Title Case:\n${toTitleCase(input)}`,
             `Sentence case:\n${toSentenceCase(input)}`,
-          ].join("\n\n")
+          ].join("\n\n"),
         );
         break;
       case "spaces":
@@ -689,7 +618,7 @@ function TextTransformTool({ mode }: { mode: string }) {
           [
             `Characters:\n${Array.from(input).reverse().join("")}`,
             `Lines:\n${input.split("\n").reverse().join("\n")}`,
-          ].join("\n\n")
+          ].join("\n\n"),
         );
         break;
       case "slug":
@@ -698,21 +627,41 @@ function TextTransformTool({ mode }: { mode: string }) {
             .toLowerCase()
             .replace(/[^a-z0-9\s-]/g, "")
             .trim()
-            .replace(/\s+/g, "-")
+            .replace(/\s+/g, "-"),
         );
         break;
       case "clean":
-        setOutput(input.replace(/[^\w\s.,!?@#%&*()\-:+/\\]/g, "").replace(/\s+/g, " ").trim());
+        setOutput(
+          input
+            .replace(/[^\w\s.,!?@#%&*()\-:+/\\]/g, "")
+            .replace(/\s+/g, " ")
+            .trim(),
+        );
         break;
       case "binary": {
         const trimmed = input.trim();
         const maybeBinary = /^[01\s]+$/.test(trimmed);
         if (maybeBinary) {
           const bytes = trimmed.split(/\s+/);
-          if (bytes.some(byte => byte.length !== 8)) {setOutput("Use eight-bit bytes separated by spaces."); break;}
-          try {setOutput(new TextDecoder("utf-8", {fatal: true}).decode(Uint8Array.from(bytes, byte => parseInt(byte, 2))));} catch {setOutput("These bytes are not valid UTF-8 text.");}
+          if (bytes.some((byte) => byte.length !== 8)) {
+            setOutput("Use eight-bit bytes separated by spaces.");
+            break;
+          }
+          try {
+            setOutput(
+              new TextDecoder("utf-8", { fatal: true }).decode(
+                Uint8Array.from(bytes, (byte) => parseInt(byte, 2)),
+              ),
+            );
+          } catch {
+            setOutput("These bytes are not valid UTF-8 text.");
+          }
         } else {
-          setOutput(Array.from(new TextEncoder().encode(input), byte => byte.toString(2).padStart(8, "0")).join(" "));
+          setOutput(
+            Array.from(new TextEncoder().encode(input), (byte) =>
+              byte.toString(2).padStart(8, "0"),
+            ).join(" "),
+          );
         }
         break;
       }
@@ -721,11 +670,29 @@ function TextTransformTool({ mode }: { mode: string }) {
       case "js-format": {
         try {
           const prettier = await import("prettier/standalone");
-          const parser = mode === "html-format" ? "html" : mode === "css-format" ? "css" : "babel";
-          const plugin = parser === "html" ? await import("prettier/plugins/html") : parser === "css" ? await import("prettier/plugins/postcss") : await import("prettier/plugins/babel");
-          const estree = parser === "babel" ? await import("prettier/plugins/estree") : null;
-          setOutput(await prettier.format(input, {parser, plugins: estree ? [plugin, estree] : [plugin]}));
-        } catch { setOutput("Could not format this code. Check its syntax."); }
+          const parser =
+            mode === "html-format"
+              ? "html"
+              : mode === "css-format"
+                ? "css"
+                : "babel";
+          const plugin =
+            parser === "html"
+              ? await import("prettier/plugins/html")
+              : parser === "css"
+                ? await import("prettier/plugins/postcss")
+                : await import("prettier/plugins/babel");
+          const estree =
+            parser === "babel" ? await import("prettier/plugins/estree") : null;
+          setOutput(
+            await prettier.format(input, {
+              parser,
+              plugins: estree ? [plugin, estree] : [plugin],
+            }),
+          );
+        } catch {
+          setOutput("Could not format this code. Check its syntax.");
+        }
         break;
       }
       default:
@@ -735,12 +702,16 @@ function TextTransformTool({ mode }: { mode: string }) {
 
   const downloadTxt = () => {
     if (!input.trim()) return;
-    downloadBlob(new Blob([input], { type: "text/plain;charset=utf-8" }), "toolinger-note.txt");
+    downloadBlob(
+      new Blob([input], { type: "text/plain;charset=utf-8" }),
+      "toolinger-note.txt",
+    );
   };
 
   return (
     <ToolPanel>
-      <textarea aria-label="Input text"
+      <textarea
+        aria-label="Input text"
         value={input}
         onChange={(event) => setInput(event.target.value)}
         placeholder="Enter text"
@@ -767,7 +738,13 @@ function TextTransformTool({ mode }: { mode: string }) {
           Clear
         </button>
       </div>
-      <textarea value={output} aria-label="Result" readOnly className={`${inputClass} min-h-40`} placeholder="Result" />
+      <textarea
+        value={output}
+        aria-label="Result"
+        readOnly
+        className={`${inputClass} min-h-40`}
+        placeholder="Result"
+      />
     </ToolPanel>
   );
 }
@@ -781,7 +758,9 @@ function TextAnalysisTool({ mode }: { mode: string }) {
     const charsNoSpaces = text.replace(/\s/g, "").length;
     const lines = text ? text.split("\n").length : 0;
     const paragraphs = text.trim() ? text.trim().split(/\n\s*\n/).length : 0;
-    const sentenceCount = text.split(/[.!?]+/).filter((value) => value.trim()).length;
+    const sentenceCount = text
+      .split(/[.!?]+/)
+      .filter((value) => value.trim()).length;
     return { words, chars, charsNoSpaces, lines, paragraphs, sentenceCount };
   }, [text]);
 
@@ -799,18 +778,25 @@ function TextAnalysisTool({ mode }: { mode: string }) {
 
   return (
     <ToolPanel>
-      <textarea aria-label="Input text"
+      <textarea
+        aria-label="Input text"
         value={text}
         onChange={(event) => setText(event.target.value)}
         className={`${inputClass} min-h-44`}
         placeholder="Paste text"
       />
       <div className="grid gap-3 sm:grid-cols-2">
-        {(mode === "words" || mode === "characters" || mode === "lines" || mode === "sentences" || mode === "reading") && (
+        {(mode === "words" ||
+          mode === "characters" ||
+          mode === "lines" ||
+          mode === "sentences" ||
+          mode === "reading") && (
           <>
             <div className={resultBox}>Words: {stats.words}</div>
             <div className={resultBox}>Characters: {stats.chars}</div>
-            <div className={resultBox}>Characters (no spaces): {stats.charsNoSpaces}</div>
+            <div className={resultBox}>
+              Characters (no spaces): {stats.charsNoSpaces}
+            </div>
             <div className={resultBox}>Lines: {stats.lines}</div>
             <div className={resultBox}>Paragraphs: {stats.paragraphs}</div>
             <div className={resultBox}>Sentences: {stats.sentenceCount}</div>
@@ -856,7 +842,8 @@ function TextLinesTool({ mode }: { mode: string }) {
 
   return (
     <ToolPanel>
-      <textarea aria-label="Input text"
+      <textarea
+        aria-label="Input text"
         value={input}
         onChange={(event) => setInput(event.target.value)}
         className={`${inputClass} min-h-40`}
@@ -878,7 +865,13 @@ function TextLinesTool({ mode }: { mode: string }) {
           Clear
         </button>
       </div>
-      <textarea value={output} aria-label="Result" readOnly className={`${inputClass} min-h-32`} placeholder="Result" />
+      <textarea
+        value={output}
+        aria-label="Result"
+        readOnly
+        className={`${inputClass} min-h-32`}
+        placeholder="Result"
+      />
     </ToolPanel>
   );
 }
@@ -902,7 +895,8 @@ function FindReplaceTool() {
 
   return (
     <ToolPanel>
-      <textarea aria-label="Input text"
+      <textarea
+        aria-label="Input text"
         className={`${inputClass} min-h-36`}
         value={text}
         onChange={(event) => setText(event.target.value)}
@@ -937,7 +931,13 @@ function FindReplaceTool() {
         </button>
         <CopyButton text={result} label="Copy Result" />
       </div>
-      <textarea className={`${inputClass} min-h-36`} value={result} aria-label="Result" readOnly placeholder="Result" />
+      <textarea
+        className={`${inputClass} min-h-36`}
+        value={result}
+        aria-label="Result"
+        readOnly
+        placeholder="Result"
+      />
     </ToolPanel>
   );
 }
@@ -948,15 +948,28 @@ function MarkdownPreviewTool() {
   const preview = useMemo(() => {
     const escaped = escapeHtml(text);
     return escaped
-      .replace(/^###\s(.+)$/gm, '<h3 class="mt-4 text-xl font-bold text-slate-900">$1</h3>')
-      .replace(/^##\s(.+)$/gm, '<h2 class="mt-5 text-2xl font-bold text-slate-900">$1</h2>')
-      .replace(/^#\s(.+)$/gm, '<h1 class="mt-6 text-3xl font-extrabold text-slate-900">$1</h1>')
+      .replace(
+        /^###\s(.+)$/gm,
+        '<h3 class="mt-4 text-xl font-bold text-slate-900">$1</h3>',
+      )
+      .replace(
+        /^##\s(.+)$/gm,
+        '<h2 class="mt-5 text-2xl font-bold text-slate-900">$1</h2>',
+      )
+      .replace(
+        /^#\s(.+)$/gm,
+        '<h1 class="mt-6 text-3xl font-extrabold text-slate-900">$1</h1>',
+      )
       .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
       .replace(/\*(.+?)\*/g, "<em>$1</em>")
-      .replace(/`(.+?)`/g, '<code class="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[0.85rem]">$1</code>')
       .replace(
-        /\[([^\]]+)\]\(([^)]+)\)/g,
-        (_match, label, url) => /^(https?:\/\/|mailto:|#)/i.test(url) ? `<a href="${url}" target="_blank" rel="noreferrer" class="font-medium text-violet-700 underline">${label}</a>` : label
+        /`(.+?)`/g,
+        '<code class="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[0.85rem]">$1</code>',
+      )
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_match, label, url) =>
+        /^(https?:\/\/|mailto:|#)/i.test(url)
+          ? `<a href="${url}" target="_blank" rel="noreferrer" class="font-medium text-violet-700 underline">${label}</a>`
+          : label,
       )
       .replace(/\n/g, "<br />");
   }, [text]);
@@ -964,8 +977,16 @@ function MarkdownPreviewTool() {
   return (
     <ToolPanel>
       <div className="grid gap-3 md:grid-cols-2">
-        <textarea aria-label="Input text" className={`${inputClass} min-h-48`} value={text} onChange={(event) => setText(event.target.value)} />
-        <div className={`${inputClass} min-h-48 overflow-auto`} dangerouslySetInnerHTML={{ __html: preview }} />
+        <textarea
+          aria-label="Input text"
+          className={`${inputClass} min-h-48`}
+          value={text}
+          onChange={(event) => setText(event.target.value)}
+        />
+        <div
+          className={`${inputClass} min-h-48 overflow-auto`}
+          dangerouslySetInnerHTML={{ __html: preview }}
+        />
       </div>
       <div className="flex flex-wrap gap-2">
         <CopyButton text={text} label="Copy Markdown" />
@@ -975,7 +996,9 @@ function MarkdownPreviewTool() {
 }
 
 function JsonTool({ mode }: { mode: string }) {
-  const [input, setInput] = useState(useContext(SampleContext) || '{"tool":"toolinger"}');
+  const [input, setInput] = useState(
+    useContext(SampleContext) || '{"tool":"toolinger"}',
+  );
   const [result, setResult] = useState("");
   const [error, setError] = useState("");
 
@@ -996,15 +1019,29 @@ function JsonTool({ mode }: { mode: string }) {
 
   return (
     <ToolPanel>
-      <textarea aria-label="Input text" className={`${inputClass} min-h-44`} value={input} onChange={(event) => setInput(event.target.value)} />
+      <textarea
+        aria-label="Input text"
+        className={`${inputClass} min-h-44`}
+        value={input}
+        onChange={(event) => setInput(event.target.value)}
+      />
       <div className="flex flex-wrap gap-2">
         <button type="button" onClick={run} className={primaryBtn}>
           Run Tool
         </button>
         <CopyButton text={result} label="Copy Result" />
       </div>
-      {error ? <div className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div> : null}
-      <textarea className={`${inputClass} min-h-32`} value={result} aria-label="Result" readOnly />
+      {error ? (
+        <div className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">
+          {error}
+        </div>
+      ) : null}
+      <textarea
+        className={`${inputClass} min-h-32`}
+        value={result}
+        aria-label="Result"
+        readOnly
+      />
     </ToolPanel>
   );
 }
@@ -1017,7 +1054,9 @@ function Base64Tool({ mode }: { mode: string }) {
     try {
       if (mode === "encode") {
         const bytes = new TextEncoder().encode(input);
-        const binString = Array.from(bytes, (byte) => String.fromCharCode(byte)).join("");
+        const binString = Array.from(bytes, (byte) =>
+          String.fromCharCode(byte),
+        ).join("");
         setResult(btoa(binString));
       } else {
         const binString = atob(input.trim());
@@ -1031,7 +1070,8 @@ function Base64Tool({ mode }: { mode: string }) {
 
   return (
     <ToolPanel>
-      <textarea aria-label="Input text"
+      <textarea
+        aria-label="Input text"
         className={`${inputClass} min-h-40`}
         value={input}
         onChange={(event) => setInput(event.target.value)}
@@ -1043,7 +1083,13 @@ function Base64Tool({ mode }: { mode: string }) {
         </button>
         <CopyButton text={result} label="Copy Result" />
       </div>
-      <textarea className={`${inputClass} min-h-40`} value={result} aria-label="Result" readOnly placeholder="Result" />
+      <textarea
+        className={`${inputClass} min-h-40`}
+        value={result}
+        aria-label="Result"
+        readOnly
+        placeholder="Result"
+      />
     </ToolPanel>
   );
 }
@@ -1054,7 +1100,11 @@ function UrlTool({ mode }: { mode: string }) {
 
   const run = () => {
     try {
-      setResult(mode === "encode" ? encodeURIComponent(input) : decodeURIComponent(input));
+      setResult(
+        mode === "encode"
+          ? encodeURIComponent(input)
+          : decodeURIComponent(input),
+      );
     } catch {
       setResult("Unable to decode this URL string.");
     }
@@ -1062,7 +1112,8 @@ function UrlTool({ mode }: { mode: string }) {
 
   return (
     <ToolPanel>
-      <textarea aria-label="Input text"
+      <textarea
+        aria-label="Input text"
         className={`${inputClass} min-h-36`}
         value={input}
         onChange={(event) => setInput(event.target.value)}
@@ -1074,7 +1125,12 @@ function UrlTool({ mode }: { mode: string }) {
         </button>
         <CopyButton text={result} label="Copy Result" />
       </div>
-      <textarea className={`${inputClass} min-h-36`} value={result} aria-label="Result" readOnly />
+      <textarea
+        className={`${inputClass} min-h-36`}
+        value={result}
+        aria-label="Result"
+        readOnly
+      />
     </ToolPanel>
   );
 }
@@ -1106,7 +1162,12 @@ function UuidTool() {
         </button>
         <CopyButton text={result} label="Copy UUIDs" />
       </div>
-      <textarea className={`${inputClass} min-h-44`} aria-label="Result" readOnly value={result} />
+      <textarea
+        className={`${inputClass} min-h-44`}
+        aria-label="Result"
+        readOnly
+        value={result}
+      />
     </ToolPanel>
   );
 }
@@ -1121,19 +1182,37 @@ function PasswordTool() {
 
   const generate = () => {
     const safeLength = clamp(length, 8, 64);
-    if (![includeUpper, includeLower, includeNumbers, includeSymbols].some(Boolean)) return;
-    setResult(randomPassword(safeLength, includeUpper, includeLower, includeNumbers, includeSymbols));
+    if (
+      ![includeUpper, includeLower, includeNumbers, includeSymbols].some(
+        Boolean,
+      )
+    )
+      return;
+    setResult(
+      randomPassword(
+        safeLength,
+        includeUpper,
+        includeLower,
+        includeNumbers,
+        includeSymbols,
+      ),
+    );
   };
 
-  const enabledTypes = [includeUpper, includeLower, includeNumbers, includeSymbols].filter(Boolean).length;
+  const enabledTypes = [
+    includeUpper,
+    includeLower,
+    includeNumbers,
+    includeSymbols,
+  ].filter(Boolean).length;
   const strength =
     length >= 16 && enabledTypes === 4
       ? "Strong"
       : length >= 12 && enabledTypes >= 3
-      ? "Good"
-      : length >= 10 && enabledTypes >= 2
-      ? "Fair"
-      : "Weak";
+        ? "Good"
+        : length >= 10 && enabledTypes >= 2
+          ? "Fair"
+          : "Weak";
 
   return (
     <ToolPanel>
@@ -1144,7 +1223,9 @@ function PasswordTool() {
           max={64}
           type="number"
           value={length}
-          onChange={(event) => setLength(clamp(Number(event.target.value), 8, 64))}
+          onChange={(event) =>
+            setLength(clamp(Number(event.target.value), 8, 64))
+          }
         />
       </Field>
       <div className="grid gap-2 sm:grid-cols-2">
@@ -1191,9 +1272,17 @@ function PasswordTool() {
         </button>
         <CopyButton text={result} label="Copy Password" />
       </div>
-      <input className={inputClass} value={result} aria-label="Result" readOnly placeholder="Password" />
+      <input
+        className={inputClass}
+        value={result}
+        aria-label="Result"
+        readOnly
+        placeholder="Password"
+      />
       <div className={resultBox}>Strength: {strength}</div>
-      {!enabledTypes ? <p role="alert">Choose at least one character type.</p> : null}
+      {!enabledTypes ? (
+        <p role="alert">Choose at least one character type.</p>
+      ) : null}
     </ToolPanel>
   );
 }
@@ -1214,7 +1303,9 @@ function HashTool() {
     const subtle = (window.crypto as Crypto | undefined)?.subtle;
     if (!subtle) {
       setResult("");
-      setError("Web Crypto is unavailable. Use HTTPS or localhost for SHA hashing.");
+      setError(
+        "Web Crypto is unavailable. Use HTTPS or localhost for SHA hashing.",
+      );
       return;
     }
 
@@ -1222,7 +1313,9 @@ function HashTool() {
       const buffer = new TextEncoder().encode(input);
       const hash = await subtle.digest(algorithm, buffer);
       const view = Array.from(new Uint8Array(hash));
-      setResult(view.map((value) => value.toString(16).padStart(2, "0")).join(""));
+      setResult(
+        view.map((value) => value.toString(16).padStart(2, "0")).join(""),
+      );
       setError("");
     } catch {
       setResult("");
@@ -1232,13 +1325,19 @@ function HashTool() {
 
   return (
     <ToolPanel>
-      <textarea aria-label="Input text"
+      <textarea
+        aria-label="Input text"
         className={`${inputClass} min-h-32`}
         value={input}
         onChange={(event) => setInput(event.target.value)}
         placeholder="Text to hash"
       />
-      <select className={inputClass} aria-label="Hash algorithm" value={algorithm} onChange={(event) => setAlgorithm(event.target.value)}>
+      <select
+        className={inputClass}
+        aria-label="Hash algorithm"
+        value={algorithm}
+        onChange={(event) => setAlgorithm(event.target.value)}
+      >
         <option>SHA-256</option>
         <option>SHA-384</option>
         <option>SHA-512</option>
@@ -1249,18 +1348,36 @@ function HashTool() {
         </button>
         <CopyButton text={result} label="Copy Hash" />
       </div>
-      {error ? <div className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800">{error}</div> : null}
-      <textarea className={`${inputClass} min-h-32`} value={result} aria-label="Result" readOnly />
+      {error ? (
+        <div className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          {error}
+        </div>
+      ) : null}
+      <textarea
+        className={`${inputClass} min-h-32`}
+        value={result}
+        aria-label="Result"
+        readOnly
+      />
     </ToolPanel>
   );
 }
 
 function TimestampTool() {
-  const [date, setDate] = useState(() => {const now = new Date(); return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);});
-  const [timestamp, setTimestamp] = useState(() => Math.floor(Date.now() / 1000).toString());
+  const [date, setDate] = useState(() => {
+    const now = new Date();
+    return new Date(now.getTime() - now.getTimezoneOffset() * 60000)
+      .toISOString()
+      .slice(0, 16);
+  });
+  const [timestamp, setTimestamp] = useState(() =>
+    Math.floor(Date.now() / 1000).toString(),
+  );
 
   const safeDate = new Date(date);
-  const timestampFromDate = Number.isNaN(safeDate.getTime()) ? "" : Math.floor(safeDate.getTime() / 1000);
+  const timestampFromDate = Number.isNaN(safeDate.getTime())
+    ? ""
+    : Math.floor(safeDate.getTime() / 1000);
   const safeTimestamp = Number(timestamp);
   const dateFromTimestamp = Number.isNaN(safeTimestamp)
     ? "Invalid timestamp"
@@ -1269,11 +1386,23 @@ function TimestampTool() {
   return (
     <ToolPanel>
       <Field label="Date and Time">
-        <input type="datetime-local" className={inputClass} value={date} onChange={(event) => setDate(event.target.value)} />
+        <input
+          type="datetime-local"
+          className={inputClass}
+          value={date}
+          onChange={(event) => setDate(event.target.value)}
+        />
       </Field>
-      <div className={resultBox}>Unix Timestamp: {timestampFromDate !== "" ? timestampFromDate : "Enter a valid date"}</div>
+      <div className={resultBox}>
+        Unix Timestamp:{" "}
+        {timestampFromDate !== "" ? timestampFromDate : "Enter a valid date"}
+      </div>
       <Field label="Unix Timestamp (seconds)">
-        <input className={inputClass} value={timestamp} onChange={(event) => setTimestamp(event.target.value)} />
+        <input
+          className={inputClass}
+          value={timestamp}
+          onChange={(event) => setTimestamp(event.target.value)}
+        />
       </Field>
       <div className={resultBox}>Date: {dateFromTimestamp}</div>
     </ToolPanel>
@@ -1283,16 +1412,23 @@ function TimestampTool() {
 function RegexTool() {
   const [pattern, setPattern] = useState("\\btool\\w*");
   const [flags, setFlags] = useState("gi");
-  const [text, setText] = useState("Toolinger offers tool access in one place.");
+  const [text, setText] = useState(
+    "Toolinger offers tool access in one place.",
+  );
   const [result, setResult] = useState("");
   const [error, setError] = useState("");
 
   const run = () => {
     try {
       const regex = new RegExp(pattern, flags);
-      const found = regex.global ? Array.from(text.matchAll(regex)) : [regex.exec(text)].filter((match): match is RegExpExecArray => Boolean(match));
+      const found = regex.global
+        ? Array.from(text.matchAll(regex))
+        : [regex.exec(text)].filter((match): match is RegExpExecArray =>
+            Boolean(match),
+          );
       const matches = found.map(
-        (match, index) => `${index + 1}. ${JSON.stringify(match[0])} @ index ${match.index}`
+        (match, index) =>
+          `${index + 1}. ${JSON.stringify(match[0])} @ index ${match.index}`,
       );
       setResult(matches.length ? matches.join("\n") : "No match found.");
       setError("");
@@ -1305,18 +1441,45 @@ function RegexTool() {
   return (
     <ToolPanel>
       <div className="grid gap-3 sm:grid-cols-2">
-        <input className={inputClass} aria-label="Pattern" value={pattern} onChange={(event) => setPattern(event.target.value)} placeholder="Pattern" />
-        <input className={inputClass} aria-label="Flags" value={flags} onChange={(event) => setFlags(event.target.value)} placeholder="Flags" />
+        <input
+          className={inputClass}
+          aria-label="Pattern"
+          value={pattern}
+          onChange={(event) => setPattern(event.target.value)}
+          placeholder="Pattern"
+        />
+        <input
+          className={inputClass}
+          aria-label="Flags"
+          value={flags}
+          onChange={(event) => setFlags(event.target.value)}
+          placeholder="Flags"
+        />
       </div>
-      <textarea aria-label="Input text" className={`${inputClass} min-h-32`} value={text} onChange={(event) => setText(event.target.value)} placeholder="Test text" />
+      <textarea
+        aria-label="Input text"
+        className={`${inputClass} min-h-32`}
+        value={text}
+        onChange={(event) => setText(event.target.value)}
+        placeholder="Test text"
+      />
       <div className="flex flex-wrap gap-2">
         <button type="button" onClick={run} className={primaryBtn}>
           Test Regex
         </button>
         <CopyButton text={result} label="Copy Matches" />
       </div>
-      {error ? <div className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div> : null}
-      <textarea className={`${inputClass} min-h-32`} aria-label="Result" readOnly value={result} />
+      {error ? (
+        <div className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">
+          {error}
+        </div>
+      ) : null}
+      <textarea
+        className={`${inputClass} min-h-32`}
+        aria-label="Result"
+        readOnly
+        value={result}
+      />
     </ToolPanel>
   );
 }
@@ -1341,7 +1504,10 @@ function ColorTool() {
 
   const rgbToHex = () => {
     const parts = rgb.split(",").map((value) => Number(value.trim()));
-    if (parts.length !== 3 || parts.some((value) => Number.isNaN(value) || value < 0 || value > 255)) {
+    if (
+      parts.length !== 3 ||
+      parts.some((value) => Number.isNaN(value) || value < 0 || value > 255)
+    ) {
       setMessage("Use RGB format: 0-255,0-255,0-255");
       return;
     }
@@ -1355,10 +1521,18 @@ function ColorTool() {
     <ToolPanel>
       <div className="grid gap-3 sm:grid-cols-3">
         <Field label="HEX">
-          <input className={inputClass} value={hex} onChange={(event) => setHex(event.target.value)} />
+          <input
+            className={inputClass}
+            value={hex}
+            onChange={(event) => setHex(event.target.value)}
+          />
         </Field>
         <Field label="RGB">
-          <input className={inputClass} value={rgb} onChange={(event) => setRgb(event.target.value)} />
+          <input
+            className={inputClass}
+            value={rgb}
+            onChange={(event) => setRgb(event.target.value)}
+          />
         </Field>
         <Field label="Picker">
           <input
@@ -1382,14 +1556,24 @@ function ColorTool() {
         <CopyButton text={hex} label="Copy HEX" />
         <CopyButton text={rgb} label="Copy RGB" />
       </div>
-      <div className={resultBox}>{message || "Pick a color or convert values."}</div>
-      <div className="h-16 rounded-xl border border-white/70" style={{ background: hex }} />
+      <div className={resultBox}>
+        {message || "Pick a color or convert values."}
+      </div>
+      <div
+        className="h-16 rounded-xl border border-white/70"
+        style={{ background: hex }}
+      />
     </ToolPanel>
   );
 }
 
 function SimpleCalculatorTool({ mode }: { mode: string }) {
-  const [values, setValues] = useState<Record<string, string>>({ a: "", b: "", c: "", d: "" });
+  const [values, setValues] = useState<Record<string, string>>({
+    a: "",
+    b: "",
+    c: "",
+    d: "",
+  });
   const [nonce, setNonce] = useState(0);
 
   const isRandom = mode === "random-number";
@@ -1402,9 +1586,11 @@ function SimpleCalculatorTool({ mode }: { mode: string }) {
 
     switch (mode) {
       case "emi": {
-        if (a <= 0 || c <= 0 || !Number.isFinite(b)) return "Enter principal, annual interest %, and tenure months.";
+        if (a <= 0 || c <= 0 || !Number.isFinite(b))
+          return "Enter principal, annual interest %, and tenure months.";
         const r = b / 1200;
-        const payment = r === 0 ? a / c : (a * r * (1 + r) ** c) / ((1 + r) ** c - 1);
+        const payment =
+          r === 0 ? a / c : (a * r * (1 + r) ** c) / ((1 + r) ** c - 1);
         return `Monthly EMI: ${formatNumber(payment)}`;
       }
       case "simple-interest":
@@ -1416,9 +1602,11 @@ function SimpleCalculatorTool({ mode }: { mode: string }) {
           ? `Future Value: ${formatNumber(a * (1 + b / 100) ** c)}`
           : "Enter principal, annual rate %, and years.";
       case "loan": {
-        if (a <= 0 || c <= 0 || !Number.isFinite(b)) return "Enter amount, annual rate %, and months.";
+        if (a <= 0 || c <= 0 || !Number.isFinite(b))
+          return "Enter amount, annual rate %, and months.";
         const r = b / 1200;
-        const emi = r === 0 ? a / c : (a * r * (1 + r) ** c) / ((1 + r) ** c - 1);
+        const emi =
+          r === 0 ? a / c : (a * r * (1 + r) ** c) / ((1 + r) ** c - 1);
         return `EMI: ${formatNumber(emi)} | Total: ${formatNumber(emi * c)}`;
       }
       case "discount":
@@ -1432,11 +1620,12 @@ function SimpleCalculatorTool({ mode }: { mode: string }) {
       case "profit":
         return a > 0 && b > 0
           ? `Profit: ${formatNumber(b - a)} | Margin: ${formatNumber(((b - a) / b) * 100)}% | Markup: ${formatNumber(
-              ((b - a) / a) * 100
+              ((b - a) / a) * 100,
             )}%`
           : "Enter cost and selling price.";
       case "percentage": {
-        if (!Number.isFinite(a) || a <= 0 || !Number.isFinite(b)) return "Enter base value and percentage.";
+        if (!Number.isFinite(a) || a <= 0 || !Number.isFinite(b))
+          return "Enter base value and percentage.";
         const percentValue = (b / 100) * a;
         if (!Number.isFinite(c) || c === 0) {
           return `${formatNumber(percentValue)} is ${b}% of ${a}.`;
@@ -1454,7 +1643,9 @@ function SimpleCalculatorTool({ mode }: { mode: string }) {
         const target = new Date(values.a).getTime();
         if (Number.isNaN(target)) return "Select a target date.";
         const days = Math.ceil((target - Date.now()) / 86_400_000);
-        return days >= 0 ? `${days} days remaining.` : `${Math.abs(days)} days passed.`;
+        return days >= 0
+          ? `${days} days remaining.`
+          : `${Math.abs(days)} days passed.`;
       }
       case "age": {
         const birth = new Date(values.a);
@@ -1462,7 +1653,11 @@ function SimpleCalculatorTool({ mode }: { mode: string }) {
         if (Number.isNaN(birth.getTime())) return "Select date of birth.";
         let age = now.getFullYear() - birth.getFullYear();
         const monthDiff = now.getMonth() - birth.getMonth();
-        if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < birth.getDate())) age -= 1;
+        if (
+          monthDiff < 0 ||
+          (monthDiff === 0 && now.getDate() < birth.getDate())
+        )
+          age -= 1;
         const days = Math.floor((now.getTime() - birth.getTime()) / 86_400_000);
         return `Age: ${age} years (${formatNumber(days)} days)`;
       }
@@ -1494,7 +1689,12 @@ function SimpleCalculatorTool({ mode }: { mode: string }) {
     tip: ["Bill Amount", "Tip %", "People", ""],
   };
 
-  const fieldLabels = labels[mode] ?? ["Value A", "Value B", "Value C", "Value D"];
+  const fieldLabels = labels[mode] ?? [
+    "Value A",
+    "Value B",
+    "Value C",
+    "Value D",
+  ];
 
   return (
     <ToolPanel>
@@ -1509,7 +1709,12 @@ function SimpleCalculatorTool({ mode }: { mode: string }) {
                 type={index === 0 && dateField ? "date" : "number"}
                 className={inputClass}
                 value={values[field] ?? ""}
-                onChange={(event) => setValues((current) => ({ ...current, [field]: event.target.value }))}
+                onChange={(event) =>
+                  setValues((current) => ({
+                    ...current,
+                    [field]: event.target.value,
+                  }))
+                }
               />
             </Field>
           );
@@ -1517,7 +1722,11 @@ function SimpleCalculatorTool({ mode }: { mode: string }) {
       </div>
       {isRandom ? (
         <div className="flex flex-wrap gap-2">
-          <button type="button" className={primaryBtn} onClick={() => setNonce((n) => n + 1)}>
+          <button
+            type="button"
+            className={primaryBtn}
+            onClick={() => setNonce((n) => n + 1)}
+          >
             Generate Number
           </button>
         </div>
@@ -1546,7 +1755,12 @@ function BmiTool() {
 
     const minHealthy = 18.5 * heightM * heightM;
     const maxHealthy = 24.9 * heightM * heightM;
-    const delta = weight < minHealthy ? minHealthy - weight : weight > maxHealthy ? weight - maxHealthy : 0;
+    const delta =
+      weight < minHealthy
+        ? minHealthy - weight
+        : weight > maxHealthy
+          ? weight - maxHealthy
+          : 0;
 
     return {
       bmi,
@@ -1558,8 +1772,8 @@ function BmiTool() {
         weight < minHealthy
           ? "Approximate weight to gain"
           : weight > maxHealthy
-          ? "Approximate weight to lose"
-          : "You are in the healthy range",
+            ? "Approximate weight to lose"
+            : "You are in the healthy range",
     };
   }, [heightCm, weightKg]);
 
@@ -1567,27 +1781,42 @@ function BmiTool() {
     <ToolPanel>
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Height (cm)">
-          <input className={inputClass} value={heightCm} onChange={(event) => setHeightCm(event.target.value)} />
+          <input
+            className={inputClass}
+            value={heightCm}
+            onChange={(event) => setHeightCm(event.target.value)}
+          />
         </Field>
         <Field label="Weight (kg)">
-          <input className={inputClass} value={weightKg} onChange={(event) => setWeightKg(event.target.value)} />
+          <input
+            className={inputClass}
+            value={weightKg}
+            onChange={(event) => setWeightKg(event.target.value)}
+          />
         </Field>
       </div>
       {summary ? (
         <div className="space-y-2">
           <div className={resultBox}>BMI: {formatNumber(summary.bmi)}</div>
-          <div className={resultBox}>Classification: {summary.classification}</div>
           <div className={resultBox}>
-            Healthy range: {formatNumber(summary.minHealthy)}kg - {formatNumber(summary.maxHealthy)}kg
+            Classification: {summary.classification}
           </div>
           <div className={resultBox}>
-            {summary.message}: {summary.delta ? `${formatNumber(summary.delta)}kg` : "0kg"}
+            Healthy range: {formatNumber(summary.minHealthy)}kg -{" "}
+            {formatNumber(summary.maxHealthy)}kg
+          </div>
+          <div className={resultBox}>
+            {summary.message}:{" "}
+            {summary.delta ? `${formatNumber(summary.delta)}kg` : "0kg"}
           </div>
         </div>
       ) : (
         <div className={resultBox}>Enter valid height and weight.</div>
       )}
-      <p className="text-xs text-slate-600">Disclaimer: This calculator is for informational purposes and not a medical diagnosis.</p>
+      <p className="text-xs text-slate-600">
+        Disclaimer: This calculator is for informational purposes and not a
+        medical diagnosis.
+      </p>
     </ToolPanel>
   );
 }
@@ -1603,29 +1832,49 @@ function BmrTool() {
     const w = Number(weight);
     const h = Number(height);
     if (a <= 0 || w <= 0 || h <= 0) return null;
-    return sex === "male" ? 10 * w + 6.25 * h - 5 * a + 5 : 10 * w + 6.25 * h - 5 * a - 161;
+    return sex === "male"
+      ? 10 * w + 6.25 * h - 5 * a + 5
+      : 10 * w + 6.25 * h - 5 * a - 161;
   }, [sex, age, weight, height]);
 
   return (
     <ToolPanel>
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Sex">
-          <select className={inputClass} value={sex} onChange={(event) => setSex(event.target.value)}>
+          <select
+            className={inputClass}
+            value={sex}
+            onChange={(event) => setSex(event.target.value)}
+          >
             <option value="male">Male</option>
             <option value="female">Female</option>
           </select>
         </Field>
         <Field label="Age">
-          <input className={inputClass} value={age} onChange={(event) => setAge(event.target.value)} />
+          <input
+            className={inputClass}
+            value={age}
+            onChange={(event) => setAge(event.target.value)}
+          />
         </Field>
         <Field label="Weight (kg)">
-          <input className={inputClass} value={weight} onChange={(event) => setWeight(event.target.value)} />
+          <input
+            className={inputClass}
+            value={weight}
+            onChange={(event) => setWeight(event.target.value)}
+          />
         </Field>
         <Field label="Height (cm)">
-          <input className={inputClass} value={height} onChange={(event) => setHeight(event.target.value)} />
+          <input
+            className={inputClass}
+            value={height}
+            onChange={(event) => setHeight(event.target.value)}
+          />
         </Field>
       </div>
-      <div className={resultBox}>BMR: {bmr ? `${formatNumber(bmr)} kcal/day` : "Enter valid values."}</div>
+      <div className={resultBox}>
+        BMR: {bmr ? `${formatNumber(bmr)} kcal/day` : "Enter valid values."}
+      </div>
     </ToolPanel>
   );
 }
@@ -1638,19 +1887,33 @@ function CalorieTool() {
   return (
     <ToolPanel>
       <Field label="BMR (kcal/day)">
-        <input className={inputClass} value={bmrValue} onChange={(event) => setBmrValue(event.target.value)} />
+        <input
+          className={inputClass}
+          value={bmrValue}
+          onChange={(event) => setBmrValue(event.target.value)}
+        />
       </Field>
       <Field label="Activity Level">
-        <select className={inputClass} value={activity} onChange={(event) => setActivity(Number(event.target.value))}>
+        <select
+          className={inputClass}
+          value={activity}
+          onChange={(event) => setActivity(Number(event.target.value))}
+        >
           <option value={1.2}>Sedentary</option>
           <option value={1.375}>Lightly Active</option>
           <option value={1.55}>Moderately Active</option>
           <option value={1.725}>Very Active</option>
         </select>
       </Field>
-      <div className={resultBox}>Maintenance calories: {formatNumber(tdee)} kcal/day</div>
-      <div className={resultBox}>Weight loss target: {formatNumber(tdee - 500)} kcal/day</div>
-      <div className={resultBox}>Weight gain target: {formatNumber(tdee + 300)} kcal/day</div>
+      <div className={resultBox}>
+        Maintenance calories: {formatNumber(tdee)} kcal/day
+      </div>
+      <div className={resultBox}>
+        Weight loss target: {formatNumber(tdee - 500)} kcal/day
+      </div>
+      <div className={resultBox}>
+        Weight gain target: {formatNumber(tdee + 300)} kcal/day
+      </div>
     </ToolPanel>
   );
 }
@@ -1661,9 +1924,15 @@ function WaterTool() {
   return (
     <ToolPanel>
       <Field label="Weight (kg)">
-        <input className={inputClass} value={weight} onChange={(event) => setWeight(event.target.value)} />
+        <input
+          className={inputClass}
+          value={weight}
+          onChange={(event) => setWeight(event.target.value)}
+        />
       </Field>
-      <div className={resultBox}>Suggested water intake: {formatNumber(liters)} liters/day</div>
+      <div className={resultBox}>
+        Suggested water intake: {formatNumber(liters)} liters/day
+      </div>
     </ToolPanel>
   );
 }
@@ -1682,38 +1951,70 @@ function BodyFatTool() {
     const hp = Number(hip);
     if (w <= 0 || n <= 0 || h <= 0) return null;
     if (sex === "male") {
-      return 495 / (1.0324 - 0.19077 * Math.log10(w - n) + 0.15456 * Math.log10(h)) - 450;
+      return (
+        495 / (1.0324 - 0.19077 * Math.log10(w - n) + 0.15456 * Math.log10(h)) -
+        450
+      );
     }
     if (hp <= 0) return null;
-    return 495 / (1.29579 - 0.35004 * Math.log10(w + hp - n) + 0.221 * Math.log10(h)) - 450;
+    return (
+      495 /
+        (1.29579 - 0.35004 * Math.log10(w + hp - n) + 0.221 * Math.log10(h)) -
+      450
+    );
   }, [sex, waist, neck, height, hip]);
 
   return (
     <ToolPanel>
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Sex">
-          <select className={inputClass} value={sex} onChange={(event) => setSex(event.target.value)}>
+          <select
+            className={inputClass}
+            value={sex}
+            onChange={(event) => setSex(event.target.value)}
+          >
             <option value="male">Male</option>
             <option value="female">Female</option>
           </select>
         </Field>
         <Field label="Waist (cm)">
-          <input className={inputClass} value={waist} onChange={(event) => setWaist(event.target.value)} />
+          <input
+            className={inputClass}
+            value={waist}
+            onChange={(event) => setWaist(event.target.value)}
+          />
         </Field>
         <Field label="Neck (cm)">
-          <input className={inputClass} value={neck} onChange={(event) => setNeck(event.target.value)} />
+          <input
+            className={inputClass}
+            value={neck}
+            onChange={(event) => setNeck(event.target.value)}
+          />
         </Field>
         <Field label="Height (cm)">
-          <input className={inputClass} value={height} onChange={(event) => setHeight(event.target.value)} />
+          <input
+            className={inputClass}
+            value={height}
+            onChange={(event) => setHeight(event.target.value)}
+          />
         </Field>
         {sex === "female" ? (
           <Field label="Hip (cm)" className="sm:col-span-2">
-            <input className={inputClass} value={hip} onChange={(event) => setHip(event.target.value)} />
+            <input
+              className={inputClass}
+              value={hip}
+              onChange={(event) => setHip(event.target.value)}
+            />
           </Field>
         ) : null}
       </div>
-      <div className={resultBox}>Estimated Body Fat: {estimate ? `${formatNumber(estimate)}%` : "Enter valid measurements."}</div>
-      <p className="text-xs text-slate-600">Disclaimer: Informational estimate only.</p>
+      <div className={resultBox}>
+        Estimated Body Fat:{" "}
+        {estimate ? `${formatNumber(estimate)}%` : "Enter valid measurements."}
+      </div>
+      <p className="text-xs text-slate-600">
+        Disclaimer: Informational estimate only.
+      </p>
     </ToolPanel>
   );
 }
@@ -1740,10 +2041,18 @@ function UnitTool({ mode }: { mode: string }) {
     <ToolPanel>
       <div className="grid gap-3 sm:grid-cols-3">
         <Field label="Value">
-          <input className={inputClass} value={value} onChange={(event) => setValue(event.target.value)} />
+          <input
+            className={inputClass}
+            value={value}
+            onChange={(event) => setValue(event.target.value)}
+          />
         </Field>
         <Field label="From">
-          <select className={inputClass} value={fromUnit} onChange={(event) => setFromUnit(event.target.value)}>
+          <select
+            className={inputClass}
+            value={fromUnit}
+            onChange={(event) => setFromUnit(event.target.value)}
+          >
             {config.units.map((unit) => (
               <option key={unit} value={unit}>
                 {UNIT_LABELS[unit] ?? unit}
@@ -1752,7 +2061,11 @@ function UnitTool({ mode }: { mode: string }) {
           </select>
         </Field>
         <Field label="To">
-          <select className={inputClass} value={toUnit} onChange={(event) => setToUnit(event.target.value)}>
+          <select
+            className={inputClass}
+            value={toUnit}
+            onChange={(event) => setToUnit(event.target.value)}
+          >
             {config.units.map((unit) => (
               <option key={unit} value={unit}>
                 {UNIT_LABELS[unit] ?? unit}
@@ -1785,7 +2098,7 @@ function QrTool() {
     }
     try {
       const size = clamp(Math.floor(Number(sizeRaw) || 600), 128, 1024);
-      const {default: QRCode} = await import("qrcode");
+      const { default: QRCode } = await import("qrcode");
       const url = await QRCode.toDataURL(text.trim(), {
         width: size,
         margin: 1,
@@ -1801,20 +2114,37 @@ function QrTool() {
   return (
     <ToolPanel>
       <Field label="URL or text">
-        <input className={inputClass} value={text} onChange={(event) => setText(event.target.value)} placeholder="URL or text" />
+        <input
+          className={inputClass}
+          value={text}
+          onChange={(event) => setText(event.target.value)}
+          placeholder="URL or text"
+        />
       </Field>
       <Field label="Size (128-1024)">
-        <input className={inputClass} value={sizeRaw} onChange={(event) => setSizeRaw(event.target.value)} />
+        <input
+          className={inputClass}
+          value={sizeRaw}
+          onChange={(event) => setSizeRaw(event.target.value)}
+        />
       </Field>
       <div className="flex flex-wrap gap-2">
         <button type="button" className={primaryBtn} onClick={generate}>
           Generate QR
         </button>
       </div>
-      {error ? <div className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div> : null}
+      {error ? (
+        <div className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">
+          {error}
+        </div>
+      ) : null}
       {qrSrc ? (
         <div className="space-y-3">
-          <img src={qrSrc} alt="Generated QR code" className="mx-auto w-full max-w-56 rounded-xl bg-white p-2" />
+          <img
+            src={qrSrc}
+            alt="Generated QR code"
+            className="mx-auto w-full max-w-56 rounded-xl bg-white p-2"
+          />
           <button
             type="button"
             className={secondaryBtn}
@@ -1842,7 +2172,8 @@ function CoinTool() {
     try {
       const Ctor =
         window.AudioContext ||
-        (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+        (window as unknown as { webkitAudioContext?: typeof AudioContext })
+          .webkitAudioContext;
       if (!Ctor) return;
 
       const context = new Ctor();
@@ -1851,10 +2182,16 @@ function CoinTool() {
 
       oscillator.type = "triangle";
       oscillator.frequency.setValueAtTime(650, context.currentTime);
-      oscillator.frequency.exponentialRampToValueAtTime(170, context.currentTime + 0.35);
+      oscillator.frequency.exponentialRampToValueAtTime(
+        170,
+        context.currentTime + 0.35,
+      );
 
       gain.gain.setValueAtTime(0.2, context.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.35);
+      gain.gain.exponentialRampToValueAtTime(
+        0.0001,
+        context.currentTime + 0.35,
+      );
 
       oscillator.connect(gain);
       gain.connect(context.destination);
@@ -1885,7 +2222,12 @@ function CoinTool() {
     <ToolPanel>
       <label className="flex items-center justify-between text-sm font-medium text-slate-700">
         Coin sound
-        <input type="checkbox" checked={sound} onChange={(event) => setSound(event.target.checked)} className="h-5 w-5 accent-violet-600" />
+        <input
+          type="checkbox"
+          checked={sound}
+          onChange={(event) => setSound(event.target.checked)}
+          className="h-5 w-5 accent-violet-600"
+        />
       </label>
       <div className="coin-zone">
         <div
@@ -1935,7 +2277,7 @@ function NotepadTool() {
     }
 
     try {
-      const {PDFDocument, StandardFonts, rgb} = await import("pdf-lib");
+      const { PDFDocument, StandardFonts, rgb } = await import("pdf-lib");
       const pdf = await PDFDocument.create();
       const font = await pdf.embedFont(StandardFonts.Helvetica);
       let page = pdf.addPage([595, 842]);
@@ -1947,13 +2289,22 @@ function NotepadTool() {
             page = pdf.addPage([595, 842]);
             y = 800;
           }
-          page.drawText(line.slice(i, i + 95), { x: 40, y, size: 11, font, color: rgb(0.1, 0.1, 0.2) });
+          page.drawText(line.slice(i, i + 95), {
+            x: 40,
+            y,
+            size: 11,
+            font,
+            color: rgb(0.1, 0.1, 0.2),
+          });
           y -= 14;
         }
       }
 
       const bytes = await pdf.save();
-      downloadBlob(new Blob([toArrayBuffer(bytes)], { type: "application/pdf" }), "toolinger-notepad.pdf");
+      downloadBlob(
+        new Blob([toArrayBuffer(bytes)], { type: "application/pdf" }),
+        "toolinger-notepad.pdf",
+      );
       setStatus("PDF exported.");
     } catch {
       setStatus("Unable to export PDF.");
@@ -1986,7 +2337,8 @@ function NotepadTool() {
 
   return (
     <ToolPanel>
-      <textarea aria-label="Input text"
+      <textarea
+        aria-label="Input text"
         className={`${inputClass} min-h-64`}
         value={text}
         onChange={(event) => setText(event.target.value)}
@@ -2001,7 +2353,10 @@ function NotepadTool() {
           type="button"
           className={primaryBtn}
           onClick={() => {
-            downloadBlob(new Blob([text], { type: "text/plain" }), "toolinger-note.txt");
+            downloadBlob(
+              new Blob([text], { type: "text/plain" }),
+              "toolinger-note.txt",
+            );
             setStatus("TXT saved.");
           }}
         >
@@ -2025,7 +2380,9 @@ function NotepadTool() {
           Clear
         </button>
       </div>
-      <div className={resultBox}>{status || "Autosaved locally in your browser."}</div>
+      <div className={resultBox}>
+        {status || "Autosaved locally in your browser."}
+      </div>
     </ToolPanel>
   );
 }
@@ -2068,7 +2425,10 @@ function SocialTool({ mode }: { mode: string }) {
       case "yt-timestamps": {
         const lines = input
           .split("\n")
-          .map((line, index) => `${String(index).padStart(2, "0")}:00 ${line || `Section ${index + 1}`}`);
+          .map(
+            (line, index) =>
+              `${String(index).padStart(2, "0")}:00 ${line || `Section ${index + 1}`}`,
+          );
         return lines.length ? lines.join("\n") : "Add one line per chapter.";
       }
       case "yt-template":
@@ -2080,21 +2440,28 @@ function SocialTool({ mode }: { mode: string }) {
 
   return (
     <ToolPanel>
-      <textarea aria-label="Input text"
+      <textarea
+        aria-label="Input text"
         className={`${inputClass} min-h-36`}
         value={input}
         onChange={(event) => setInput(event.target.value)}
         placeholder="Enter draft content"
       />
       {(mode === "caption" || mode === "reel" || mode === "yt-template") && (
-        <textarea aria-label="Input text"
+        <textarea
+          aria-label="Input text"
           className={`${inputClass} min-h-24`}
           value={secondary}
           onChange={(event) => setSecondary(event.target.value)}
           placeholder="Optional supporting line"
         />
       )}
-      <textarea className={`${inputClass} min-h-44`} aria-label="Result" readOnly value={output} />
+      <textarea
+        className={`${inputClass} min-h-44`}
+        aria-label="Result"
+        readOnly
+        value={output}
+      />
       <div className="flex flex-wrap gap-2">
         <CopyButton text={output} label="Copy Output" />
       </div>
@@ -2109,7 +2476,9 @@ function PdfTool({ mode }: { mode: string }) {
   const [pageInput, setPageInput] = useState("1");
   const [angle, setAngle] = useState("90");
   const [order, setOrder] = useState("1,2");
-  const [html, setHtml] = useState("<h1>Toolinger</h1><p>Print this as PDF.</p>");
+  const [html, setHtml] = useState(
+    "<h1>Toolinger</h1><p>Print this as PDF.</p>",
+  );
   const previewRef = useRef<HTMLIFrameElement | null>(null);
   const previewUrlRef = useRef<string | null>(null);
 
@@ -2123,7 +2492,8 @@ function PdfTool({ mode }: { mode: string }) {
 
   const run = async () => {
     try {
-      const {PDFDocument, StandardFonts, rgb, degrees} = await import("pdf-lib");
+      const { PDFDocument, StandardFonts, rgb, degrees } =
+        await import("pdf-lib");
       if (mode === "text-to-pdf") {
         if (!text.trim()) {
           setInfo("Please type content first.");
@@ -2140,13 +2510,22 @@ function PdfTool({ mode }: { mode: string }) {
               page = pdf.addPage([595, 842]);
               y = 800;
             }
-            page.drawText(line.slice(i, i + 95), { x: 40, y, size: 11, font, color: rgb(0.1, 0.1, 0.2) });
+            page.drawText(line.slice(i, i + 95), {
+              x: 40,
+              y,
+              size: 11,
+              font,
+              color: rgb(0.1, 0.1, 0.2),
+            });
             y -= 14;
           }
         }
 
         const bytes = await pdf.save();
-        downloadBlob(new Blob([toArrayBuffer(bytes)], { type: "application/pdf" }), "toolinger-text.pdf");
+        downloadBlob(
+          new Blob([toArrayBuffer(bytes)], { type: "application/pdf" }),
+          "toolinger-text.pdf",
+        );
         setInfo("PDF downloaded.");
         return;
       }
@@ -2158,9 +2537,22 @@ function PdfTool({ mode }: { mode: string }) {
           return;
         }
         frame.opener = null;
-        const cleanDocument = new DOMParser().parseFromString(html, "text/html");
-        cleanDocument.querySelectorAll("script,iframe,object,embed,link,meta,base,form").forEach(node => node.remove());
-        cleanDocument.querySelectorAll("*").forEach(node => Array.from(node.attributes).forEach(attr => { if (attr.name.startsWith("on") || /^(javascript:|https?:|\/\/)/i.test(attr.value.trim())) node.removeAttribute(attr.name); }));
+        const cleanDocument = new DOMParser().parseFromString(
+          html,
+          "text/html",
+        );
+        cleanDocument
+          .querySelectorAll("script,iframe,object,embed,link,meta,base,form")
+          .forEach((node) => node.remove());
+        cleanDocument.querySelectorAll("*").forEach((node) =>
+          Array.from(node.attributes).forEach((attr) => {
+            if (
+              attr.name.startsWith("on") ||
+              /^(javascript:|https?:|\/\/)/i.test(attr.value.trim())
+            )
+              node.removeAttribute(attr.name);
+          }),
+        );
         frame.document.write(`
           <html>
             <head>
@@ -2196,7 +2588,10 @@ function PdfTool({ mode }: { mode: string }) {
           copied.forEach((page) => output.addPage(page));
         }
         const bytes = await output.save({ useObjectStreams: true });
-        downloadBlob(new Blob([toArrayBuffer(bytes)], { type: "application/pdf" }), "toolinger-merged.pdf");
+        downloadBlob(
+          new Blob([toArrayBuffer(bytes)], { type: "application/pdf" }),
+          "toolinger-merged.pdf",
+        );
         setInfo("Merged PDF downloaded.");
         return;
       }
@@ -2217,14 +2612,16 @@ function PdfTool({ mode }: { mode: string }) {
         const title = pdf.getTitle() || "(none)";
         const author = pdf.getAuthor() || "(none)";
         setInfo(
-          `Pages: ${pdf.getPageCount()} | File: ${first.name} | Size: ${(first.size / 1024).toFixed(1)}KB | Title: ${title} | Author: ${author}`
+          `Pages: ${pdf.getPageCount()} | File: ${first.name} | Size: ${(first.size / 1024).toFixed(1)}KB | Title: ${title} | Author: ${author}`,
         );
         return;
       }
 
       const source = await PDFDocument.load(await readAsArrayBuffer(first));
       const total = source.getPageCount();
-      const indexes = ["split", "extract-pages", "delete-pages"].includes(mode) ? parsePages(pageInput, total) : [];
+      const indexes = ["split", "extract-pages", "delete-pages"].includes(mode)
+        ? parsePages(pageInput, total)
+        : [];
 
       if (mode === "split" || mode === "extract-pages") {
         if (indexes.length === 0) {
@@ -2235,14 +2632,19 @@ function PdfTool({ mode }: { mode: string }) {
         const pages = await out.copyPages(source, indexes);
         pages.forEach((page) => out.addPage(page));
         const bytes = await out.save({ useObjectStreams: true });
-        downloadBlob(new Blob([toArrayBuffer(bytes)], { type: "application/pdf" }), "toolinger-extracted.pdf");
+        downloadBlob(
+          new Blob([toArrayBuffer(bytes)], { type: "application/pdf" }),
+          "toolinger-extracted.pdf",
+        );
         setInfo("New PDF downloaded.");
         return;
       }
 
       if (mode === "delete-pages") {
         const deleteSet = new Set(indexes);
-        const keep = source.getPageIndices().filter((index) => !deleteSet.has(index));
+        const keep = source
+          .getPageIndices()
+          .filter((index) => !deleteSet.has(index));
         if (keep.length === 0) {
           setInfo("Cannot remove every page from a PDF.");
           return;
@@ -2251,7 +2653,10 @@ function PdfTool({ mode }: { mode: string }) {
         const pages = await out.copyPages(source, keep);
         pages.forEach((page) => out.addPage(page));
         const bytes = await out.save({ useObjectStreams: true });
-        downloadBlob(new Blob([toArrayBuffer(bytes)], { type: "application/pdf" }), "toolinger-pages-deleted.pdf");
+        downloadBlob(
+          new Blob([toArrayBuffer(bytes)], { type: "application/pdf" }),
+          "toolinger-pages-deleted.pdf",
+        );
         setInfo("PDF with removed pages downloaded.");
         return;
       }
@@ -2266,16 +2671,24 @@ function PdfTool({ mode }: { mode: string }) {
         const pages = await out.copyPages(source, requested);
         pages.forEach((page) => out.addPage(page));
         const bytes = await out.save({ useObjectStreams: true });
-        downloadBlob(new Blob([toArrayBuffer(bytes)], { type: "application/pdf" }), "toolinger-reordered.pdf");
+        downloadBlob(
+          new Blob([toArrayBuffer(bytes)], { type: "application/pdf" }),
+          "toolinger-reordered.pdf",
+        );
         setInfo("Reordered PDF downloaded.");
         return;
       }
 
       if (mode === "rotate") {
         const safeAngle = Number(angle) || 0;
-        source.getPages().forEach((page) => page.setRotation(degrees(safeAngle)));
+        source
+          .getPages()
+          .forEach((page) => page.setRotation(degrees(safeAngle)));
         const bytes = await source.save({ useObjectStreams: true });
-        downloadBlob(new Blob([toArrayBuffer(bytes)], { type: "application/pdf" }), "toolinger-rotated.pdf");
+        downloadBlob(
+          new Blob([toArrayBuffer(bytes)], { type: "application/pdf" }),
+          "toolinger-rotated.pdf",
+        );
         setInfo("Rotated PDF downloaded.");
         return;
       }
@@ -2294,30 +2707,44 @@ function PdfTool({ mode }: { mode: string }) {
           });
         });
         const bytes = await source.save({ useObjectStreams: true });
-        downloadBlob(new Blob([toArrayBuffer(bytes)], { type: "application/pdf" }), "toolinger-numbered.pdf");
+        downloadBlob(
+          new Blob([toArrayBuffer(bytes)], { type: "application/pdf" }),
+          "toolinger-numbered.pdf",
+        );
         setInfo("Numbered PDF downloaded.");
         return;
       }
 
       if (mode === "compress") {
-        const bytes = await source.save({ useObjectStreams: true, objectsPerTick: 2000 });
-        downloadBlob(new Blob([toArrayBuffer(bytes)], { type: "application/pdf" }), "toolinger-compressed.pdf");
+        const bytes = await source.save({
+          useObjectStreams: true,
+          objectsPerTick: 2000,
+        });
+        downloadBlob(
+          new Blob([toArrayBuffer(bytes)], { type: "application/pdf" }),
+          "toolinger-compressed.pdf",
+        );
         setInfo(
-          `Compressed PDF exported (${(bytes.byteLength / 1024).toFixed(1)} KB). Original: ${(first.size / 1024).toFixed(1)} KB.`
+          `Compressed PDF exported (${(bytes.byteLength / 1024).toFixed(1)} KB). Original: ${(first.size / 1024).toFixed(1)} KB.`,
         );
         return;
       }
 
       setInfo("Unsupported PDF mode.");
     } catch (error) {
-      setInfo(error instanceof Error ? error.message : "Unable to process this file. Please check your input.");
+      setInfo(
+        error instanceof Error
+          ? error.message
+          : "Unable to process this file. Please check your input.",
+      );
     }
   };
 
   return (
     <ToolPanel>
       {mode === "text-to-pdf" ? (
-        <textarea aria-label="Input text"
+        <textarea
+          aria-label="Input text"
           className={`${inputClass} min-h-44`}
           value={text}
           onChange={(event) => setText(event.target.value)}
@@ -2325,7 +2752,8 @@ function PdfTool({ mode }: { mode: string }) {
         />
       ) : null}
       {mode === "html-to-pdf" ? (
-        <textarea aria-label="Input text"
+        <textarea
+          aria-label="Input text"
           className={`${inputClass} min-h-44`}
           value={html}
           onChange={(event) => setHtml(event.target.value)}
@@ -2342,10 +2770,13 @@ function PdfTool({ mode }: { mode: string }) {
           onChange={(event) => setFiles(Array.from(event.target.files ?? []))}
         />
       ) : null}
-      {mode === "split" || mode === "extract-pages" || mode === "delete-pages" ? (
+      {mode === "split" ||
+      mode === "extract-pages" ||
+      mode === "delete-pages" ? (
         <input
           className={inputClass}
-          aria-label="Page numbers or ranges" value={pageInput}
+          aria-label="Page numbers or ranges"
+          value={pageInput}
           onChange={(event) => setPageInput(event.target.value)}
           placeholder="Page numbers: 1,2,3"
         />
@@ -2353,13 +2784,19 @@ function PdfTool({ mode }: { mode: string }) {
       {mode === "rearrange-pages" ? (
         <input
           className={inputClass}
-          aria-label="New page order" value={order}
+          aria-label="New page order"
+          value={order}
           onChange={(event) => setOrder(event.target.value)}
           placeholder="New order: 3,1,2"
         />
       ) : null}
       {mode === "rotate" ? (
-        <select className={inputClass} aria-label="Rotation angle" value={angle} onChange={(event) => setAngle(event.target.value)}>
+        <select
+          className={inputClass}
+          aria-label="Rotation angle"
+          value={angle}
+          onChange={(event) => setAngle(event.target.value)}
+        >
           <option value="90">90 degrees</option>
           <option value="180">180 degrees</option>
           <option value="270">270 degrees</option>
@@ -2372,13 +2809,20 @@ function PdfTool({ mode }: { mode: string }) {
       </div>
       <div className={`${resultBox} break-words`}>{info}</div>
       {mode === "preview" ? (
-        <iframe ref={previewRef} title="PDF Preview" className="h-80 w-full rounded-xl border border-slate-200 bg-white" />
+        <iframe
+          ref={previewRef}
+          title="PDF Preview"
+          className="h-80 w-full rounded-xl border border-slate-200 bg-white"
+        />
       ) : null}
     </ToolPanel>
   );
 }
 
 function ImageTool({ mode }: { mode: string }) {
+  const [busy, setBusy] = useState(false);
+  const imageWorker = useRef<Worker | null>(null);
+  useEffect(() => () => imageWorker.current?.terminate(), []);
   const [files, setFiles] = useState<File[]>([]);
   const [resultUrl, setResultUrl] = useState("");
   const [resultText, setResultText] = useState("Select an image to begin.");
@@ -2404,7 +2848,7 @@ function ImageTool({ mode }: { mode: string }) {
     canvas: HTMLCanvasElement,
     type = "image/png",
     fileName = "toolinger-image.png",
-    exportQuality = 0.92
+    exportQuality = 0.92,
   ) => {
     try {
       let finalCanvas = canvas;
@@ -2432,6 +2876,8 @@ function ImageTool({ mode }: { mode: string }) {
   };
 
   const run = async () => {
+    if (busy) return;
+    setBusy(true);
     try {
       if (mode === "quote") {
         const canvas = document.createElement("canvas");
@@ -2441,8 +2887,8 @@ function ImageTool({ mode }: { mode: string }) {
         if (!context) return;
 
         const gradient = context.createLinearGradient(0, 0, 1200, 628);
-        gradient.addColorStop(0, "#5b4bff");
-        gradient.addColorStop(1, "#16c8ff");
+        gradient.addColorStop(0, "#164b3b");
+        gradient.addColorStop(1, "#4c9a7f");
         context.fillStyle = gradient;
         context.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -2460,13 +2906,18 @@ function ImageTool({ mode }: { mode: string }) {
         return;
       }
 
+      if (
+        files.length > 30 ||
+        files.some((file) => file.size > 25 * 1024 * 1024)
+      )
+        throw new Error("Use at most 30 images, each smaller than 25 MB.");
       const first = files[0] as File;
       const qualityValue = clamp(Number(quality) || 0.8, 0.2, 1);
 
       if (mode === "metadata") {
         const img = await loadImage(await readAsDataUrl(first));
         setResultText(
-          `Name: ${first.name} | Type: ${first.type} | Size: ${(first.size / 1024).toFixed(1)}KB | Dimensions: ${img.width}x${img.height}`
+          `Name: ${first.name} | Type: ${first.type} | Size: ${(first.size / 1024).toFixed(1)}KB | Dimensions: ${img.width}x${img.height}`,
         );
         return;
       }
@@ -2477,15 +2928,23 @@ function ImageTool({ mode }: { mode: string }) {
       }
 
       if (mode === "image-to-pdf") {
-      const {PDFDocument} = await import("pdf-lib");
+        const { PDFDocument } = await import("pdf-lib");
         const pdf = await PDFDocument.create();
         for (const file of files) {
           const embedded = await embedImageInPdf(pdf, file);
           const page = pdf.addPage([embedded.width, embedded.height]);
-          page.drawImage(embedded, { x: 0, y: 0, width: embedded.width, height: embedded.height });
+          page.drawImage(embedded, {
+            x: 0,
+            y: 0,
+            width: embedded.width,
+            height: embedded.height,
+          });
         }
         const bytes = await pdf.save();
-        downloadBlob(new Blob([toArrayBuffer(bytes)], { type: "application/pdf" }), "toolinger-images.pdf");
+        downloadBlob(
+          new Blob([toArrayBuffer(bytes)], { type: "application/pdf" }),
+          "toolinger-images.pdf",
+        );
         setResultText("PDF downloaded.");
         return;
       }
@@ -2520,6 +2979,8 @@ function ImageTool({ mode }: { mode: string }) {
       }
 
       const canvas = await drawImageToCanvas(first);
+      if (canvas.width * canvas.height > 24_000_000)
+        throw new Error("Use an image with at most 24 megapixels.");
       const context = canvas.getContext("2d");
       if (!context) {
         setResultText("Canvas not supported in this browser.");
@@ -2528,6 +2989,16 @@ function ImageTool({ mode }: { mode: string }) {
       const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
       const data = imageData.data;
 
+      if (mode === "resize" || mode === "crop") {
+        if (
+          ![Number(width), Number(height)].every(
+            (n) => Number.isInteger(n) && n >= 32 && n <= 5000,
+          )
+        )
+          throw new Error(
+            "Width and height must be whole numbers from 32 to 5000.",
+          );
+      }
       if (mode === "resize") {
         const nw = clamp(Number(width), 32, 5000);
         const nh = clamp(Number(height), 32, 5000);
@@ -2588,7 +3059,12 @@ function ImageTool({ mode }: { mode: string }) {
       }
 
       if (mode === "compress") {
-        await exportCanvas(canvas, "image/jpeg", "toolinger-compressed.jpg", qualityValue);
+        await exportCanvas(
+          canvas,
+          "image/jpeg",
+          "toolinger-compressed.jpg",
+          qualityValue,
+        );
         setResultText("Compressed image downloaded.");
         return;
       }
@@ -2644,67 +3120,61 @@ function ImageTool({ mode }: { mode: string }) {
         return;
       }
 
-      if (mode === "brightness-contrast") {
-        const bright = clamp(Number(brightness) || 0, -100, 100);
-        const contrastValue = clamp(Number(contrast) || 0, -100, 100);
-        const factor = (259 * (contrastValue + 255)) / (255 * (259 - contrastValue));
-
-        for (let index = 0; index < data.length; index += 4) {
-          data[index] = clamp(factor * (data[index] - 128) + 128 + bright, 0, 255);
-          data[index + 1] = clamp(factor * (data[index + 1] - 128) + 128 + bright, 0, 255);
-          data[index + 2] = clamp(factor * (data[index + 2] - 128) + 128 + bright, 0, 255);
-        }
+      if (
+        [
+          "brightness-contrast",
+          "grayscale",
+          "sepia",
+          "blur",
+          "sharpen",
+        ].includes(mode)
+      ) {
+        const pixels = await new Promise<Uint8ClampedArray>(
+          (resolve, reject) => {
+            const worker = new Worker(
+              new URL("./src/image-worker.ts", import.meta.url),
+              { type: "module" },
+            );
+            imageWorker.current = worker;
+            worker.onmessage = ({ data: reply }) => {
+              worker.terminate();
+              imageWorker.current = null;
+              reply.error
+                ? reject(new Error(reply.error))
+                : resolve(new Uint8ClampedArray(reply.buffer));
+            };
+            worker.onerror = () => {
+              worker.terminate();
+              imageWorker.current = null;
+              reject(
+                new Error(
+                  "Image engine unavailable. Please reload and try again.",
+                ),
+              );
+            };
+            worker.postMessage(
+              {
+                buffer: data.buffer,
+                width: canvas.width,
+                height: canvas.height,
+                mode,
+                brightness: Number(brightness),
+                contrast: Number(contrast),
+              },
+              [data.buffer],
+            );
+          },
+        );
+        context.putImageData(
+          new ImageData(
+            new Uint8ClampedArray(pixels),
+            canvas.width,
+            canvas.height,
+          ),
+          0,
+          0,
+        );
       }
-
-      if (mode === "grayscale") {
-        for (let index = 0; index < data.length; index += 4) {
-          const avg = (data[index] + data[index + 1] + data[index + 2]) / 3;
-          data[index] = avg;
-          data[index + 1] = avg;
-          data[index + 2] = avg;
-        }
-      }
-
-      if (mode === "sepia") {
-        for (let index = 0; index < data.length; index += 4) {
-          const red = data[index];
-          const green = data[index + 1];
-          const blue = data[index + 2];
-          data[index] = clamp(0.393 * red + 0.769 * green + 0.189 * blue, 0, 255);
-          data[index + 1] = clamp(0.349 * red + 0.686 * green + 0.168 * blue, 0, 255);
-          data[index + 2] = clamp(0.272 * red + 0.534 * green + 0.131 * blue, 0, 255);
-        }
-      }
-
-      if (mode === "blur" || mode === "sharpen") {
-        const kernel =
-          mode === "blur"
-            ? [1 / 9, 1 / 9, 1 / 9, 1 / 9, 1 / 9, 1 / 9, 1 / 9, 1 / 9, 1 / 9]
-            : [0, -1, 0, -1, 5, -1, 0, -1, 0];
-        const copy = new Uint8ClampedArray(data);
-        const widthPx = canvas.width;
-        const heightPx = canvas.height;
-
-        for (let y = 1; y < heightPx - 1; y += 1) {
-          for (let x = 1; x < widthPx - 1; x += 1) {
-            for (let channel = 0; channel < 3; channel += 1) {
-              let sum = 0;
-              let kIndex = 0;
-              for (let ky = -1; ky <= 1; ky += 1) {
-                for (let kx = -1; kx <= 1; kx += 1) {
-                  const px = ((y + ky) * widthPx + (x + kx)) * 4 + channel;
-                  sum += copy[px] * kernel[kIndex];
-                  kIndex += 1;
-                }
-              }
-              const current = (y * widthPx + x) * 4 + channel;
-              data[current] = clamp(sum, 0, 255);
-            }
-          }
-        }
-      }
-
-      context.putImageData(imageData, 0, 0);
 
       if (mode === "color-picker" && canvasRef.current) {
         canvasRef.current.width = canvas.width;
@@ -2716,8 +3186,14 @@ function ImageTool({ mode }: { mode: string }) {
         await exportCanvas(canvas, "image/png", `toolinger-${mode}.png`);
         setResultText("Image processed and downloaded.");
       }
-    } catch {
-      setResultText("Unable to process file. Please use a valid image.");
+    } catch (error) {
+      setResultText(
+        error instanceof Error
+          ? error.message
+          : "Unable to process file. Please use a valid image.",
+      );
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -2730,17 +3206,32 @@ function ImageTool({ mode }: { mode: string }) {
           accept="image/*"
           aria-label="Choose image files"
           multiple={mode === "collage" || mode === "image-to-pdf"}
-          onChange={(event) => setFiles(Array.from(event.target.files ?? []))}
+          disabled={busy}
+          onChange={(event) => {
+            setFiles(Array.from(event.target.files ?? []));
+            setResultUrl("");
+            setResultText("Image selected. Choose settings and run the tool.");
+          }}
         />
       )}
 
       {(mode === "resize" || mode === "crop") && (
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="Width">
-            <input className={inputClass} value={width} onChange={(event) => setWidth(event.target.value)} placeholder="Width" />
+            <input
+              className={inputClass}
+              value={width}
+              onChange={(event) => setWidth(event.target.value)}
+              placeholder="Width"
+            />
           </Field>
           <Field label="Height">
-            <input className={inputClass} value={height} onChange={(event) => setHeight(event.target.value)} placeholder="Height" />
+            <input
+              className={inputClass}
+              value={height}
+              onChange={(event) => setHeight(event.target.value)}
+              placeholder="Height"
+            />
           </Field>
         </div>
       )}
@@ -2748,11 +3239,20 @@ function ImageTool({ mode }: { mode: string }) {
       {(mode === "compress" || mode === "format") && (
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="Quality (0.2-1)">
-            <input className={inputClass} value={quality} onChange={(event) => setQuality(event.target.value)} placeholder="Quality 0.2 - 1" />
+            <input
+              className={inputClass}
+              value={quality}
+              onChange={(event) => setQuality(event.target.value)}
+              placeholder="Quality 0.2 - 1"
+            />
           </Field>
           {mode === "format" ? (
             <Field label="Target Format">
-              <select className={inputClass} value={targetFormat} onChange={(event) => setTargetFormat(event.target.value)}>
+              <select
+                className={inputClass}
+                value={targetFormat}
+                onChange={(event) => setTargetFormat(event.target.value)}
+              >
                 <option value="auto">Auto</option>
                 <option value="png">PNG</option>
                 <option value="jpeg">JPG</option>
@@ -2765,7 +3265,11 @@ function ImageTool({ mode }: { mode: string }) {
 
       {mode === "rotate" && (
         <Field label="Rotate">
-          <select className={inputClass} value={rotation} onChange={(event) => setRotation(event.target.value)}>
+          <select
+            className={inputClass}
+            value={rotation}
+            onChange={(event) => setRotation(event.target.value)}
+          >
             <option value="90">90 degrees</option>
             <option value="180">180 degrees</option>
             <option value="270">270 degrees</option>
@@ -2775,7 +3279,11 @@ function ImageTool({ mode }: { mode: string }) {
 
       {mode === "flip" && (
         <Field label="Flip Direction">
-          <select className={inputClass} value={flipDirection} onChange={(event) => setFlipDirection(event.target.value)}>
+          <select
+            className={inputClass}
+            value={flipDirection}
+            onChange={(event) => setFlipDirection(event.target.value)}
+          >
             <option value="horizontal">Horizontal</option>
             <option value="vertical">Vertical</option>
           </select>
@@ -2784,7 +3292,12 @@ function ImageTool({ mode }: { mode: string }) {
 
       {(mode === "watermark" || mode === "quote") && (
         <Field label="Text">
-          <input className={inputClass} value={watermark} onChange={(event) => setWatermark(event.target.value)} placeholder="Text" />
+          <input
+            className={inputClass}
+            value={watermark}
+            onChange={(event) => setWatermark(event.target.value)}
+            placeholder="Text"
+          />
         </Field>
       )}
 
@@ -2810,13 +3323,22 @@ function ImageTool({ mode }: { mode: string }) {
       )}
 
       <div className="flex flex-wrap gap-2">
-        <button type="button" className={primaryBtn} onClick={run}>
-          Run Tool
+        <button
+          type="button"
+          className={primaryBtn}
+          onClick={run}
+          disabled={busy}
+        >
+          {busy ? "Processing…" : "Run Tool"}
         </button>
-        {resultText ? <CopyButton text={resultText} label="Copy Result" /> : null}
+        {resultText ? (
+          <CopyButton text={resultText} label="Copy Result" />
+        ) : null}
       </div>
 
-      <div className={`${resultBox} break-all whitespace-pre-wrap`}>{resultText}</div>
+      <div className={`${resultBox} break-all whitespace-pre-wrap`}>
+        {resultText}
+      </div>
 
       {mode === "color-picker" && (
         <div className="space-y-3">
@@ -2826,12 +3348,22 @@ function ImageTool({ mode }: { mode: string }) {
             onClick={(event) => {
               if (!canvasRef.current) return;
               const rect = canvasRef.current.getBoundingClientRect();
-              const x = Math.floor(((event.clientX - rect.left) / rect.width) * canvasRef.current.width);
-              const y = Math.floor(((event.clientY - rect.top) / rect.height) * canvasRef.current.height);
+              const x = Math.floor(
+                ((event.clientX - rect.left) / rect.width) *
+                  canvasRef.current.width,
+              );
+              const y = Math.floor(
+                ((event.clientY - rect.top) / rect.height) *
+                  canvasRef.current.height,
+              );
               const context = canvasRef.current.getContext("2d");
               if (!context) return;
               const pixel = context.getImageData(x, y, 1, 1).data;
-              const hex = rgbaToHex(pixel[0] ?? 0, pixel[1] ?? 0, pixel[2] ?? 0);
+              const hex = rgbaToHex(
+                pixel[0] ?? 0,
+                pixel[1] ?? 0,
+                pixel[2] ?? 0,
+              );
               setPickedColor(hex);
               setResultText(`Selected color: ${hex}`);
             }}
@@ -2857,8 +3389,16 @@ function ImageTool({ mode }: { mode: string }) {
 const INDIA_PHOTO_PRESETS = {
   passport: { label: "35 × 45 mm — common ID format", width: 413, height: 531 },
   pan: { label: "PAN application — 25 × 35 mm", width: 295, height: 413 },
-  aadhaar: { label: "35 × 45 mm — document attachment", width: 413, height: 531 },
-  uan: { label: "35 × 45 mm — application attachment", width: 413, height: 531 },
+  aadhaar: {
+    label: "35 × 45 mm — document attachment",
+    width: 413,
+    height: 531,
+  },
+  uan: {
+    label: "35 × 45 mm — application attachment",
+    width: 413,
+    height: 531,
+  },
   visa: { label: "2 × 2 inch — square photo", width: 600, height: 600 },
 };
 
@@ -2875,7 +3415,8 @@ function PassportTool() {
   const [enhance, setEnhance] = useState(false);
   const [horizontal, setHorizontal] = useState(50);
   const [guides, setGuides] = useState(true);
-  const serviceStatus = "Free on-device AI. Your photo stays in this browser. Model files download on first use.";
+  const serviceStatus =
+    "Free on-device AI. Your photo stays in this browser. Model files download on first use.";
   const pendingRequest = useRef<AbortController | null>(null);
   const photoUrls = useRef({ source: "", cutout: "" });
   const [preview, setPreview] = useState("");
@@ -2890,26 +3431,59 @@ function PassportTool() {
     };
   }, []);
 
-  const preset = format === "custom"
-    ? { label: "Custom", width: Math.min(4000, Math.max(100, Math.round(Number(customWidth)) || 100)), height: Math.min(4000, Math.max(100, Math.round(Number(customHeight)) || 100)) }
-    : INDIA_PHOTO_PRESETS[format as keyof typeof INDIA_PHOTO_PRESETS];
+  const preset =
+    format === "custom"
+      ? {
+          label: "Custom",
+          width: Math.min(
+            4000,
+            Math.max(100, Math.round(Number(customWidth)) || 100),
+          ),
+          height: Math.min(
+            4000,
+            Math.max(100, Math.round(Number(customHeight)) || 100),
+          ),
+        }
+      : INDIA_PHOTO_PRESETS[format as keyof typeof INDIA_PHOTO_PRESETS];
 
-  useEffect(() => { setPreview(""); }, [background, format, customWidth, customHeight, zoom, vertical, horizontal, enhance]);
+  useEffect(() => {
+    setPreview("");
+  }, [
+    background,
+    format,
+    customWidth,
+    customHeight,
+    zoom,
+    vertical,
+    horizontal,
+    enhance,
+  ]);
 
   const selectFile = (next: File | null) => {
     if (next) {
-      try { validatePhoto(next); } catch (error) { setStatus((error as Error).message); return; }
+      try {
+        validatePhoto(next);
+      } catch (error) {
+        setStatus((error as Error).message);
+        return;
+      }
     }
     if (sourceUrl) URL.revokeObjectURL(sourceUrl);
     if (cutoutUrl) URL.revokeObjectURL(cutoutUrl);
-    setZoom(100); setVertical(50); setHorizontal(50);
+    setZoom(100);
+    setVertical(50);
+    setHorizontal(50);
     setFile(next);
     setCutoutUrl("");
     setPreview("");
     const url = next ? URL.createObjectURL(next) : "";
     photoUrls.current = { source: url, cutout: "" };
     setSourceUrl(url);
-    setStatus(next ? "Photo ready. Remove its background, then create the document photo." : "Upload a clear front-facing portrait.");
+    setStatus(
+      next
+        ? "Photo ready. Remove its background, then create the document photo."
+        : "Upload a clear front-facing portrait.",
+    );
   };
 
   const removeBackground = async () => {
@@ -2923,15 +3497,31 @@ function PassportTool() {
     try {
       const blob = await localCutout(file, controller.signal, setStatus);
       const url = URL.createObjectURL(blob);
-      try { await loadImage(url); } catch { URL.revokeObjectURL(url); throw new Error("The AI returned an unreadable image."); }
-      if (controller.signal.aborted) { URL.revokeObjectURL(url); return; }
+      try {
+        await loadImage(url);
+      } catch {
+        URL.revokeObjectURL(url);
+        throw new Error("The AI returned an unreadable image.");
+      }
+      if (controller.signal.aborted) {
+        URL.revokeObjectURL(url);
+        return;
+      }
       if (cutoutUrl) URL.revokeObjectURL(cutoutUrl);
       photoUrls.current.cutout = url;
       setCutoutUrl(url);
       setPreview("");
-      setStatus("Background removed with AI. Choose a studio colour and create the photo.");
+      setStatus(
+        "Background removed with AI. Choose a studio colour and create the photo.",
+      );
     } catch (error) {
-      setStatus(controller.signal.aborted ? "Processing stopped or timed out. Your original photo is unchanged." : error instanceof Error ? error.message : "AI could not start. Try another browser or a smaller portrait.");
+      setStatus(
+        controller.signal.aborted
+          ? "Processing stopped or timed out. Your original photo is unchanged."
+          : error instanceof Error
+            ? error.message
+            : "AI could not start. Try another browser or a smaller portrait.",
+      );
     } finally {
       window.clearTimeout(timeout);
       pendingRequest.current = null;
@@ -2954,14 +3544,28 @@ function PassportTool() {
       context.imageSmoothingQuality = "high";
       context.fillStyle = background;
       context.fillRect(0, 0, output.width, output.height);
-      const {dx, dy, drawWidth, drawHeight} = portraitLayout(image.width, image.height, output.width, output.height, zoom, horizontal, vertical);
-      context.filter = enhance ? "brightness(1.035) contrast(1.07) saturate(1.035)" : "none";
+      const { dx, dy, drawWidth, drawHeight } = portraitLayout(
+        image.width,
+        image.height,
+        output.width,
+        output.height,
+        zoom,
+        horizontal,
+        vertical,
+      );
+      context.filter = enhance
+        ? "brightness(1.035) contrast(1.07) saturate(1.035)"
+        : "none";
       context.drawImage(image, dx, dy, drawWidth, drawHeight);
       context.filter = "none";
       setPreview(output.toDataURL("image/png"));
-      setStatus(`${preset.label} created at ${preset.width} × ${preset.height}px.${image.width < preset.width || image.height < preset.height ? " Source enlarged; use a higher-resolution portrait for a sharper print." : ""}`);
+      setStatus(
+        `${preset.label} created at ${preset.width} × ${preset.height}px.${image.width < preset.width || image.height < preset.height ? " Source enlarged; use a higher-resolution portrait for a sharper print." : ""}`,
+      );
     } catch {
-      setStatus("Could not create the photo. Please try a JPG, PNG or WebP portrait.");
+      setStatus(
+        "Could not create the photo. Please try a JPG, PNG or WebP portrait.",
+      );
     } finally {
       setBusy(false);
     }
@@ -2989,73 +3593,265 @@ function PassportTool() {
 
   const downloadSheet = async () => {
     try {
-      const {PDFDocument} = await import("pdf-lib");
+      const { PDFDocument } = await import("pdf-lib");
       const photo = await loadImage(preview);
       const layout = sheetLayout(photo.width, photo.height);
-      if (!layout.positions.length) throw new Error("This custom photo is too large for a 4 × 6 inch sheet at 300 DPI.");
+      if (!layout.positions.length)
+        throw new Error(
+          "This custom photo is too large for a 4 × 6 inch sheet at 300 DPI.",
+        );
       const pdf = await PDFDocument.create();
       const page = pdf.addPage([288, 432]);
-      const image = await pdf.embedPng(await (await fetch(preview)).arrayBuffer());
-      for (const {x, y} of layout.positions) page.drawImage(image, {x: x * .24, y: 432 - (y + photo.height) * .24, width: photo.width * .24, height: photo.height * .24});
+      const image = await pdf.embedPng(
+        await (await fetch(preview)).arrayBuffer(),
+      );
+      for (const { x, y } of layout.positions)
+        page.drawImage(image, {
+          x: x * 0.24,
+          y: 432 - (y + photo.height) * 0.24,
+          width: photo.width * 0.24,
+          height: photo.height * 0.24,
+        });
       const bytes = await pdf.save();
-      downloadBlob(new Blob([toArrayBuffer(bytes)], {type: "application/pdf"}), "toolinger-4x6-print.pdf");
-      setStatus(`${layout.positions.length} photos on a 4 × 6 inch PDF. Print at actual size / 100%, without fit-to-page.`);
-    } catch (error) { setStatus(error instanceof Error ? error.message : "Unable to export print sheet."); }
+      downloadBlob(
+        new Blob([toArrayBuffer(bytes)], { type: "application/pdf" }),
+        "toolinger-4x6-print.pdf",
+      );
+      setStatus(
+        `${layout.positions.length} photos on a 4 × 6 inch PDF. Print at actual size / 100%, without fit-to-page.`,
+      );
+    } catch (error) {
+      setStatus(
+        error instanceof Error
+          ? error.message
+          : "Unable to export print sheet.",
+      );
+    }
   };
 
   return (
     <ToolPanel>
-      <div onDragOver={e => e.preventDefault()} onDrop={e => {e.preventDefault(); if (!busy) selectFile(e.dataTransfer.files?.[0] ?? null);}} className="rounded-2xl border border-dashed border-violet-300 bg-violet-50 p-4">
-        <div className="mb-2 font-semibold text-slate-900">1. Upload portrait</div>
-        <p className="mb-3 text-xs text-slate-600">Choose a photo or drop it here. JPG, PNG or WebP, up to 10 MB.</p>
-        <input aria-label="Choose portrait" disabled={busy} className={inputClass} type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => selectFile(event.target.files?.[0] ?? null)} />
-        {sourceUrl ? <img src={sourceUrl} alt="Original portrait" className="mx-auto mt-3 max-h-64 rounded-xl border bg-white object-contain" /> : null}
+      <div
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={(e) => {
+          e.preventDefault();
+          if (!busy) selectFile(e.dataTransfer.files?.[0] ?? null);
+        }}
+        className="rounded-2xl border border-dashed border-violet-300 bg-violet-50 p-4"
+      >
+        <div className="mb-2 font-semibold text-slate-900">
+          1. Upload portrait
+        </div>
+        <p className="mb-3 text-xs text-slate-600">
+          Choose a photo or drop it here. JPG, PNG or WebP, up to 10 MB.
+        </p>
+        <input
+          aria-label="Choose portrait"
+          disabled={busy}
+          className={inputClass}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          onChange={(event) => selectFile(event.target.files?.[0] ?? null)}
+        />
+        {sourceUrl ? (
+          <img
+            src={sourceUrl}
+            alt="Original portrait"
+            className="mx-auto mt-3 max-h-64 rounded-xl border bg-white object-contain"
+          />
+        ) : null}
       </div>
       <div className="rounded-2xl border border-slate-200 bg-white p-4">
-        <div className="mb-2 font-semibold text-slate-900">2. AI background removal</div>
-        <p className="text-sm text-slate-600" role="status">{serviceStatus}</p>
-        <button type="button" disabled={busy || !file} onClick={removeBackground} className={`${primaryBtn} mt-3 disabled:opacity-50`}>
+        <div className="mb-2 font-semibold text-slate-900">
+          2. AI background removal
+        </div>
+        <p className="text-sm text-slate-600" role="status">
+          {serviceStatus}
+        </p>
+        <button
+          type="button"
+          disabled={busy || !file}
+          onClick={removeBackground}
+          className={`${primaryBtn} mt-3 disabled:opacity-50`}
+        >
           {busy ? "Processing…" : "Remove Background with AI"}
         </button>
-        {busy && pendingRequest.current ? <button type="button" className={`${secondaryBtn} ml-2`} onClick={() => pendingRequest.current?.abort()}>Cancel</button> : null}
-        {cutoutUrl ? <img src={cutoutUrl} alt="AI background removed" className="mx-auto mt-3 max-h-64 rounded-xl border bg-[linear-gradient(45deg,#eee_25%,transparent_25%),linear-gradient(-45deg,#eee_25%,transparent_25%),linear-gradient(45deg,transparent_75%,#eee_75%),linear-gradient(-45deg,transparent_75%,#eee_75%)] bg-[length:18px_18px] object-contain" /> : null}
-        <p className="mt-2 text-xs text-slate-500">Lightweight portrait AI • no account or API key. Best for one clearly visible person. Fine hair and complex edges may need correction; review before downloading.</p>
+        {busy && pendingRequest.current ? (
+          <button
+            type="button"
+            className={`${secondaryBtn} ml-2`}
+            onClick={() => pendingRequest.current?.abort()}
+          >
+            Cancel
+          </button>
+        ) : null}
+        {cutoutUrl ? (
+          <img
+            src={cutoutUrl}
+            alt="AI background removed"
+            className="mx-auto mt-3 max-h-64 rounded-xl border bg-[linear-gradient(45deg,#eee_25%,transparent_25%),linear-gradient(-45deg,#eee_25%,transparent_25%),linear-gradient(45deg,transparent_75%,#eee_75%),linear-gradient(-45deg,transparent_75%,#eee_75%)] bg-[length:18px_18px] object-contain"
+          />
+        ) : null}
+        <p className="mt-2 text-xs text-slate-500">
+          Lightweight portrait AI • no account or API key. Best for one clearly
+          visible person. Fine hair and complex edges may need correction;
+          review before downloading.
+        </p>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Photo dimensions">
-          <select className={inputClass} value={format} onChange={(event) => setFormat(event.target.value)}>
-            {Object.entries(INDIA_PHOTO_PRESETS).map(([value, item]) => <option key={value} value={value}>{item.label}</option>)}
+          <select
+            className={inputClass}
+            value={format}
+            onChange={(event) => setFormat(event.target.value)}
+          >
+            {Object.entries(INDIA_PHOTO_PRESETS).map(([value, item]) => (
+              <option key={value} value={value}>
+                {item.label}
+              </option>
+            ))}
             <option value="custom">Custom pixel size</option>
           </select>
         </Field>
         <Field label="Studio background">
-          <div className="flex h-12 overflow-hidden rounded-xl border border-slate-300" role="group" aria-label="Studio background colours">
-            {[{ name: "White", color: "#FFFFFF" }, { name: "Navy blue", color: "#163A70" }, { name: "Red", color: "#B91C1C" }].map(({ name, color }) => (
-              <button key={color} type="button" aria-label={name} aria-pressed={background === color} onClick={() => setBackground(color)} className={`flex-1 border-4 ${background === color ? "border-violet-500" : "border-transparent"}`} style={{ backgroundColor: color }} />
+          <div
+            className="flex h-12 overflow-hidden rounded-xl border border-slate-300"
+            role="group"
+            aria-label="Studio background colours"
+          >
+            {[
+              { name: "White", color: "#FFFFFF" },
+              { name: "Navy blue", color: "#163A70" },
+              { name: "Red", color: "#B91C1C" },
+            ].map(({ name, color }) => (
+              <button
+                key={color}
+                type="button"
+                aria-label={name}
+                aria-pressed={background === color}
+                onClick={() => setBackground(color)}
+                className={`flex-1 border-4 ${background === color ? "border-violet-500" : "border-transparent"}`}
+                style={{ backgroundColor: color }}
+              />
             ))}
           </div>
         </Field>
       </div>
-      {format === "custom" ? <div className="grid grid-cols-2 gap-3"><Field label="Width (px)"><input className={inputClass} type="number" min="100" max="4000" value={customWidth} onChange={(e) => setCustomWidth(Number(e.target.value))} /></Field><Field label="Height (px)"><input className={inputClass} type="number" min="100" max="4000" value={customHeight} onChange={(e) => setCustomHeight(Number(e.target.value))} /></Field></div> : null}
+      {format === "custom" ? (
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Width (px)">
+            <input
+              className={inputClass}
+              type="number"
+              min="100"
+              max="4000"
+              value={customWidth}
+              onChange={(e) => setCustomWidth(Number(e.target.value))}
+            />
+          </Field>
+          <Field label="Height (px)">
+            <input
+              className={inputClass}
+              type="number"
+              min="100"
+              max="4000"
+              value={customHeight}
+              onChange={(e) => setCustomHeight(Number(e.target.value))}
+            />
+          </Field>
+        </div>
+      ) : null}
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label={`Zoom — ${zoom}%`}><input className="w-full accent-violet-600" type="range" min="100" max="180" value={zoom} onChange={(e) => setZoom(Number(e.target.value))} /></Field>
-        <Field label="Vertical position"><input className="w-full accent-violet-600" type="range" min="0" max="100" value={vertical} onChange={(e) => setVertical(Number(e.target.value))} /></Field>
+        <Field label={`Zoom — ${zoom}%`}>
+          <input
+            className="w-full accent-violet-600"
+            type="range"
+            min="100"
+            max="180"
+            value={zoom}
+            onChange={(e) => setZoom(Number(e.target.value))}
+          />
+        </Field>
+        <Field label="Vertical position">
+          <input
+            className="w-full accent-violet-600"
+            type="range"
+            min="0"
+            max="100"
+            value={vertical}
+            onChange={(e) => setVertical(Number(e.target.value))}
+          />
+        </Field>
       </div>
-      <Field label="Custom background colour"><input type="color" value={background} onChange={e => setBackground(e.target.value)} className="h-11 w-full rounded-lg" /></Field>
-      <Field label="Horizontal position"><input className="w-full accent-violet-600" type="range" min="0" max="100" value={horizontal} onChange={e => setHorizontal(Number(e.target.value))} /></Field>
-      <label className="flex items-center gap-2 text-sm font-medium text-slate-700"><input type="checkbox" checked={enhance} onChange={(e) => setEnhance(e.target.checked)} className="h-5 w-5 accent-violet-600" /> Auto-enhance brightness, colour and contrast</label>
+      <Field label="Custom background colour">
+        <input
+          type="color"
+          value={background}
+          onChange={(e) => setBackground(e.target.value)}
+          className="h-11 w-full rounded-lg"
+        />
+      </Field>
+      <Field label="Horizontal position">
+        <input
+          className="w-full accent-violet-600"
+          type="range"
+          min="0"
+          max="100"
+          value={horizontal}
+          onChange={(e) => setHorizontal(Number(e.target.value))}
+        />
+      </Field>
+      <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+        <input
+          type="checkbox"
+          checked={enhance}
+          onChange={(e) => setEnhance(e.target.checked)}
+          className="h-5 w-5 accent-violet-600"
+        />{" "}
+        Auto-enhance brightness, colour and contrast
+      </label>
       <div className="flex flex-wrap gap-2">
-        <button type="button" disabled={busy || !file} onClick={build} className={`${primaryBtn} disabled:opacity-50`}>
+        <button
+          type="button"
+          disabled={busy || !file}
+          onClick={build}
+          className={`${primaryBtn} disabled:opacity-50`}
+        >
           Create Studio Photo
         </button>
       </div>
-      <div className={resultBox} role="status" aria-live="polite">{status}</div>
-      <p className="text-sm text-slate-600">Sizes are templates, not approval checks. Confirm dimensions, background and digital-editing rules with your issuing authority. Aadhaar enrolment requires a live photo. Keep enhancement off for official submissions.</p>
-      {sourceUrl && !cutoutUrl ? <p className="text-sm text-slate-600">Background colours only replace transparent areas after removal; your original background stays visible until then.</p> : null}
+      <div className={resultBox} role="status" aria-live="polite">
+        {status}
+      </div>
+      <p className="text-sm text-slate-600">
+        Sizes are templates, not approval checks. Confirm dimensions, background
+        and digital-editing rules with your issuing authority. Aadhaar enrolment
+        requires a live photo. Keep enhancement off for official submissions.
+      </p>
+      {sourceUrl && !cutoutUrl ? (
+        <p className="text-sm text-slate-600">
+          Background colours only replace transparent areas after removal; your
+          original background stays visible until then.
+        </p>
+      ) : null}
       {preview ? (
         <div className="space-y-3">
-          <div className="portrait-preview"><img src={preview} alt="Passport preview" />{guides ? <div className="portrait-guides" aria-hidden="true"><span /></div> : null}</div>
-          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={guides} onChange={e => setGuides(e.target.checked)} /> Show framing guides (excluded from downloads)</label>
+          <div className="portrait-preview">
+            <img src={preview} alt="Passport preview" />
+            {guides ? (
+              <div className="portrait-guides" aria-hidden="true">
+                <span />
+              </div>
+            ) : null}
+          </div>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={guides}
+              onChange={(e) => setGuides(e.target.checked)}
+            />{" "}
+            Show framing guides (excluded from downloads)
+          </label>
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
@@ -3068,8 +3864,18 @@ function PassportTool() {
             >
               Download PNG
             </button>
-            <button type="button" className={secondaryBtn} onClick={downloadSheet}>Download 4 × 6 print PDF</button>
-            <button type="button" className={secondaryBtn} onClick={downloadJpg}>
+            <button
+              type="button"
+              className={secondaryBtn}
+              onClick={downloadSheet}
+            >
+              Download 4 × 6 print PDF
+            </button>
+            <button
+              type="button"
+              className={secondaryBtn}
+              onClick={downloadJpg}
+            >
               Download JPG
             </button>
           </div>
@@ -3084,18 +3890,32 @@ const localAiPipelines = new Map<string, Promise<any>>();
 function getLocalAiPipeline(task: string, model: string) {
   const key = `${task}:${model}`;
   if (!localAiPipelines.has(key)) {
-    localAiPipelines.set(key, import("@huggingface/transformers").then(({ pipeline, env }) => {
-      env.allowLocalModels = false;
-      env.useBrowserCache = true;
-      return pipeline(task as any, model, { dtype: "q8" });
-    }).catch(error => {localAiPipelines.delete(key); throw error;}));
+    localAiPipelines.set(
+      key,
+      import("@huggingface/transformers")
+        .then(({ pipeline, env }) => {
+          env.allowLocalModels = false;
+          env.useBrowserCache = true;
+          return pipeline(task as any, model, { dtype: "q8" });
+        })
+        .catch((error) => {
+          localAiPipelines.delete(key);
+          throw error;
+        }),
+    );
   }
   return localAiPipelines.get(key)!;
 }
 
 function cosine(a: ArrayLike<number>, b: ArrayLike<number>) {
-  let dot = 0, aa = 0, bb = 0;
-  for (let i = 0; i < Math.min(a.length, b.length); i += 1) { dot += a[i] * b[i]; aa += a[i] ** 2; bb += b[i] ** 2; }
+  let dot = 0,
+    aa = 0,
+    bb = 0;
+  for (let i = 0; i < Math.min(a.length, b.length); i += 1) {
+    dot += a[i] * b[i];
+    aa += a[i] ** 2;
+    bb += b[i] ** 2;
+  }
   return dot / (Math.sqrt(aa) * Math.sqrt(bb) || 1);
 }
 
@@ -3103,7 +3923,9 @@ function rowsFromTensor(tensor: any): number[][] {
   const data = Array.from(tensor.data as ArrayLike<number>);
   const rows = tensor.dims?.[0] || 1;
   const width = data.length / rows;
-  return Array.from({ length: rows }, (_, row) => data.slice(row * width, (row + 1) * width));
+  return Array.from({ length: rows }, (_, row) =>
+    data.slice(row * width, (row + 1) * width),
+  );
 }
 
 function LocalAiTool({ mode }: { mode: string }) {
@@ -3113,52 +3935,163 @@ function LocalAiTool({ mode }: { mode: string }) {
   const [busy, setBusy] = useState(false);
 
   const run = async () => {
-    if (!text.trim()) { setResult("Enter some text first."); return; }
-    if (mode === "similarity" && !second.trim()) { setResult("Enter both passages."); return; }
+    if (!text.trim()) {
+      setResult("Enter some text first.");
+      return;
+    }
+    if (mode === "similarity" && !second.trim()) {
+      setResult("Enter both passages.");
+      return;
+    }
     setBusy(true);
-    setResult("Loading the compact model on this device. The first run may take a minute; later runs use the browser cache.");
+    setResult(
+      "Loading the compact model on this device. The first run may take a minute; later runs use the browser cache.",
+    );
     try {
       if (mode === "sentiment") {
-        const classifier = await getLocalAiPipeline("sentiment-analysis", "Xenova/distilbert-base-uncased-finetuned-sst-2-english");
+        const classifier = await getLocalAiPipeline(
+          "sentiment-analysis",
+          "Xenova/distilbert-base-uncased-finetuned-sst-2-english",
+        );
         const output = await classifier(text.slice(0, 4000));
         const best = Array.isArray(output) ? output[0] : output;
-        setResult(`${String(best.label).replace("POSITIVE", "Positive").replace("NEGATIVE", "Negative")} · ${(best.score * 100).toFixed(1)}% confidence`);
+        setResult(
+          `${String(best.label).replace("POSITIVE", "Positive").replace("NEGATIVE", "Negative")} · ${(best.score * 100).toFixed(1)}% confidence`,
+        );
       } else {
-        const embed = await getLocalAiPipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2");
+        const embed = await getLocalAiPipeline(
+          "feature-extraction",
+          "Xenova/all-MiniLM-L6-v2",
+        );
         if (mode === "similarity") {
           if (!second.trim()) throw new Error("Enter both passages.");
-          const vectors = rowsFromTensor(await embed([text, second], { pooling: "mean", normalize: true }));
-          setResult(`Semantic similarity: ${(Math.max(0, cosine(vectors[0], vectors[1])) * 100).toFixed(1)}%`);
+          const vectors = rowsFromTensor(
+            await embed([text, second], { pooling: "mean", normalize: true }),
+          );
+          setResult(
+            `Semantic similarity: ${(Math.max(0, cosine(vectors[0], vectors[1])) * 100).toFixed(1)}%`,
+          );
         } else if (mode === "summary") {
-          const sentences = text.match(/[^.!?]+[.!?]+|[^.!?]+$/g)?.map((item) => item.trim()).filter(Boolean) ?? [];
-          if (sentences.length < 2) throw new Error("Enter at least two sentences.");
-          const vectors = rowsFromTensor(await embed(sentences.slice(0, 40), { pooling: "mean", normalize: true }));
-          const centroid = vectors[0].map((_, col) => vectors.reduce((sum, row) => sum + row[col], 0) / vectors.length);
+          const sentences =
+            text
+              .match(/[^.!?]+[.!?]+|[^.!?]+$/g)
+              ?.map((item) => item.trim())
+              .filter(Boolean) ?? [];
+          if (sentences.length < 2)
+            throw new Error("Enter at least two sentences.");
+          const vectors = rowsFromTensor(
+            await embed(sentences.slice(0, 40), {
+              pooling: "mean",
+              normalize: true,
+            }),
+          );
+          const centroid = vectors[0].map(
+            (_, col) =>
+              vectors.reduce((sum, row) => sum + row[col], 0) / vectors.length,
+          );
           const keep = Math.max(1, Math.ceil(vectors.length * 0.3));
-          const chosen = vectors.map((row, index) => ({ index, score: cosine(row, centroid) })).sort((a, b) => b.score - a.score).slice(0, keep).sort((a, b) => a.index - b.index);
+          const chosen = vectors
+            .map((row, index) => ({ index, score: cosine(row, centroid) }))
+            .sort((a, b) => b.score - a.score)
+            .slice(0, keep)
+            .sort((a, b) => a.index - b.index);
           setResult(chosen.map(({ index }) => sentences[index]).join(" "));
         } else {
           const words = text.toLowerCase().match(/[a-z][a-z-]{3,}/g) ?? [];
-          const stop = new Set(["this", "that", "with", "from", "have", "will", "your", "about", "there", "their", "what", "when", "where", "which", "would", "could", "should", "into", "than", "then", "they", "them", "were", "been", "being"]);
-          const candidates = [...new Set(words.filter((word) => !stop.has(word)))].slice(0, 35);
-          if (!candidates.length) throw new Error("Enter a longer English passage.");
-          const vectors = rowsFromTensor(await embed([text.slice(0, 4000), ...candidates], { pooling: "mean", normalize: true }));
-          const ranked = candidates.map((word, index) => ({ word, score: cosine(vectors[0], vectors[index + 1]) })).sort((a, b) => b.score - a.score).slice(0, 10);
+          const stop = new Set([
+            "this",
+            "that",
+            "with",
+            "from",
+            "have",
+            "will",
+            "your",
+            "about",
+            "there",
+            "their",
+            "what",
+            "when",
+            "where",
+            "which",
+            "would",
+            "could",
+            "should",
+            "into",
+            "than",
+            "then",
+            "they",
+            "them",
+            "were",
+            "been",
+            "being",
+          ]);
+          const candidates = [
+            ...new Set(words.filter((word) => !stop.has(word))),
+          ].slice(0, 35);
+          if (!candidates.length)
+            throw new Error("Enter a longer English passage.");
+          const vectors = rowsFromTensor(
+            await embed([text.slice(0, 4000), ...candidates], {
+              pooling: "mean",
+              normalize: true,
+            }),
+          );
+          const ranked = candidates
+            .map((word, index) => ({
+              word,
+              score: cosine(vectors[0], vectors[index + 1]),
+            }))
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 10);
           setResult(ranked.map(({ word }) => word).join(", "));
         }
       }
     } catch (error) {
-      setResult(error instanceof Error ? error.message : "The local model could not run in this browser.");
-    } finally { setBusy(false); }
+      setResult(
+        error instanceof Error
+          ? error.message
+          : "The local model could not run in this browser.",
+      );
+    } finally {
+      setBusy(false);
+    }
   };
 
-  return <ToolPanel>
-    <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">Your text stays in this browser. The model downloads once and is cached locally. No API key or account is needed.</div>
-    <textarea aria-label="Input text" className={`${inputClass} min-h-44`} value={text} onChange={(event) => setText(event.target.value)} placeholder={mode === "similarity" ? "First passage" : "Paste text"} />
-    {mode === "similarity" ? <textarea aria-label="Input text" className={`${inputClass} min-h-32`} value={second} onChange={(event) => setSecond(event.target.value)} placeholder="Second passage" /> : null}
-    <button type="button" className={primaryBtn} onClick={run} disabled={busy}>{busy ? "Running locally…" : "Run local AI"}</button>
-    <div className={`${resultBox} whitespace-pre-wrap`} aria-live="polite">{result}</div>
-  </ToolPanel>;
+  return (
+    <ToolPanel>
+      <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
+        Your text stays in this browser. The model downloads once and is cached
+        locally. No API key or account is needed.
+      </div>
+      <textarea
+        aria-label="Input text"
+        className={`${inputClass} min-h-44`}
+        value={text}
+        onChange={(event) => setText(event.target.value)}
+        placeholder={mode === "similarity" ? "First passage" : "Paste text"}
+      />
+      {mode === "similarity" ? (
+        <textarea
+          aria-label="Input text"
+          className={`${inputClass} min-h-32`}
+          value={second}
+          onChange={(event) => setSecond(event.target.value)}
+          placeholder="Second passage"
+        />
+      ) : null}
+      <button
+        type="button"
+        className={primaryBtn}
+        onClick={run}
+        disabled={busy}
+      >
+        {busy ? "Running locally…" : "Run local AI"}
+      </button>
+      <div className={`${resultBox} whitespace-pre-wrap`} aria-live="polite">
+        {result}
+      </div>
+    </ToolPanel>
+  );
 }
 
 const CATEGORY_ICONS: Record<string, string> = {
@@ -3372,13 +4305,14 @@ function sampleFor(tool: ToolConfig) {
   return "Hello, Toolinger! Small tasks, sorted.\nTry a tool and make your day a little easier.";
 }
 function App() {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("all");
-  const [activeToolId, setActiveToolId] = useState(() =>
-    location.hash.replace(/^#\/?/, ""),
-  );
-  const [legalPage, setLegalPage] = useState<string | null>(null);
+  const route = useRoute();
+  const lastFocusedRoute = useRef(route);
+  const [menuOpen, setMenuOpen] = useState(false),
+    [search, setSearch] = useState(""),
+    [legalPage, setLegalPage] = useState<string | null>(null),
+    [reset, setReset] = useState(0),
+    [sampleTool, setSampleTool] = useState(""),
+    [notice, setNotice] = useState("");
   const [theme, setTheme] = useState(() =>
     readPreference(
       "toolinger-theme",
@@ -3386,32 +4320,61 @@ function App() {
     ),
   );
   const [favourites, setFavourites] = useState<string[]>(() => {
-    const value = readPreference("toolinger-favourites", []);
-    return Array.isArray(value)
-      ? value.filter((id) => typeof id === "string")
-      : [];
+    const v = readPreference("toolinger-favourites", []);
+    return Array.isArray(v) ? v.filter((id) => typeof id === "string") : [];
   });
   const [recent, setRecent] = useState<string[]>(() => {
-    const value = readPreference("toolinger-recent", []);
-    return Array.isArray(value)
-      ? value.filter((id) => typeof id === "string")
-      : [];
+    const v = readPreference("toolinger-recent", []);
+    return Array.isArray(v) ? v.filter((id) => typeof id === "string") : [];
   });
-  const [reset, setReset] = useState(0);
-  const [sampleTool, setSampleTool] = useState("");
-  const [notice, setNotice] = useState("");
+  const [sort, setSort] = useState("popular");
   const searchRef = useRef<HTMLInputElement>(null);
-  const activeTool = TOOL_LIST.find((tool) => tool.id === activeToolId);
+  const activeTool = route.startsWith("tools/")
+    ? TOOL_LIST.find((t) => t.id === route.split("/")[1])
+    : undefined;
+  const category = route.startsWith("categories/")
+    ? route.split("/")[1]
+    : route === "saved"
+      ? "favourites"
+      : "all";
+  const guide = GUIDES.find((g) => route === `guides/${g.slug}`);
+  const policy = LEGAL_CONTENT[route];
+  const known =
+    [
+      "",
+      "tools",
+      "daily",
+      "saved",
+      "guides",
+      "my-space",
+      ...Object.keys(LEGAL_CONTENT),
+    ].includes(route) ||
+    Boolean(activeTool) ||
+    Boolean(guide) ||
+    (route.startsWith("categories/") && category in CATEGORY_LABELS);
   const tools = TOOL_LIST.filter(
-    (tool) =>
+    (t) =>
       (category === "all" ||
         (category === "favourites"
-          ? favourites.includes(tool.id)
-          : tool.category === category)) &&
-      `${tool.name} ${tool.description} ${tool.keywords.join(" ")} ${CATEGORY_LABELS[tool.category]}`
+          ? favourites.includes(t.id)
+          : t.category === category)) &&
+      `${t.name} ${t.description} ${t.keywords.join(" ")} ${CATEGORY_LABELS[t.category]}`
         .toLowerCase()
         .includes(search.trim().toLowerCase()),
-  );
+  ).sort((a, b) => (sort === "az" ? a.name.localeCompare(b.name) : 0));
+  const openTool = (id: string) => {
+    navigate(`tools/${id}`);
+    setMenuOpen(false);
+    setSearch("");
+  };
+  const home = () => {
+    navigate("");
+    setSearch("");
+  };
+  const toggleFavourite = (id: string) =>
+    setFavourites((v) =>
+      v.includes(id) ? v.filter((x) => x !== id) : [...v, id],
+    );
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
     savePreference("toolinger-theme", theme);
@@ -3423,32 +4386,51 @@ function App() {
     savePreference("toolinger-recent", recent);
   }, [recent]);
   useEffect(() => {
+    setReset(0);
+    setSampleTool("");
+    setMenuOpen(false);
+    if (lastFocusedRoute.current !== route) {
+      document.getElementById("main-content")?.focus({ preventScroll: true });
+      lastFocusedRoute.current = route;
+    }
     document.title = activeTool
       ? `${activeTool.name} — Toolinger`
-      : "Toolinger — Your everyday toolbox";
-  }, [activeTool]);
-  useEffect(() => {
-    const handler = () => {
-      setActiveToolId(location.hash.replace(/^#\/?/, ""));
-      setReset(0);
-      window.scrollTo({ top: 0 });
-    };
-    window.addEventListener("hashchange", handler);
-    return () => window.removeEventListener("hashchange", handler);
-  }, []);
+      : policy
+        ? `${policy.title} — Toolinger`
+        : guide
+          ? `${guide.title} — Toolinger`
+          : route === "daily"
+            ? "Daily dashboard — Toolinger"
+            : route === "tools"
+              ? "All tools — Toolinger"
+              : route === "saved"
+                ? "Saved tools — Toolinger"
+                : route === "my-space"
+                  ? "My space & backups — Toolinger"
+                  : route === "guides"
+                    ? "Practical guides — Toolinger"
+                    : category !== "all"
+                      ? `${CATEGORY_LABELS[category as CategoryId]} — Toolinger`
+                      : "Toolinger — Tools for a better everyday";
+    const canonical = document.querySelector<HTMLLinkElement>(
+      "link[rel=canonical]",
+    );
+    if (canonical)
+      canonical.href = `https://subha760.github.io${routeHref(route ? route + "/" : "")}`;
+  }, [route]);
   useEffect(() => {
     if (activeTool)
       setRecent((current) =>
         [activeTool.id, ...current.filter((id) => id !== activeTool.id)].slice(
           0,
-          6,
+          8,
         ),
       );
-  }, [activeToolId]);
+  }, [activeTool?.id]);
   useEffect(() => {
-    const handler = (event: KeyboardEvent) => {
-      if ((event.ctrlKey || event.metaKey) && event.key === "k") {
-        event.preventDefault();
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+        e.preventDefault();
         searchRef.current?.focus();
       }
     };
@@ -3457,26 +4439,9 @@ function App() {
   }, []);
   useEffect(() => {
     if (!notice) return;
-    const timer = window.setTimeout(() => setNotice(""), 3000);
+    const timer = setTimeout(() => setNotice(""), 3500);
     return () => clearTimeout(timer);
   }, [notice]);
-  const openTool = (id: string) => {
-    location.hash = `/${id}`;
-    setMenuOpen(false);
-    setSearch("");
-    window.scrollTo({ top: 0 });
-  };
-  const home = () => {
-    location.hash = "";
-    setSearch("");
-    setCategory("all");
-  };
-  const toggleFavourite = (id: string) =>
-    setFavourites((current) =>
-      current.includes(id)
-        ? current.filter((item) => item !== id)
-        : [...current, id],
-    );
   const renderActiveTool = () => {
     if (!activeTool) return null;
     switch (activeTool.engine) {
@@ -3538,15 +4503,17 @@ function App() {
         return <SocialTool mode={activeTool.mode ?? "caption"} />;
       case "local-ai":
         return <LocalAiTool mode={activeTool.mode ?? "sentiment"} />;
+      case "lifestyle":
+        return <LifestyleTool mode={activeTool.mode ?? "tasks"} />;
       default:
         return null;
     }
   };
   const card = (tool: ToolConfig) => (
     <article className="catalog-card" key={tool.id}>
-      <button className="card-open" onClick={() => openTool(tool.id)}>
+      <a className="card-open" href={routeHref(`tools/${tool.id}/`)}>
         <span className={`tool-icon category-${tool.category}`}>
-          <Icon name={CATEGORY_ICONS[tool.category]} size={23} />
+          <Icon name={CATEGORY_ICONS[tool.category] ?? "spark"} size={23} />
         </span>
         <span className="card-category">
           {CATEGORY_LABELS[tool.category].replace(" Tools", "")}
@@ -3556,7 +4523,7 @@ function App() {
         <span className="card-action">
           Open tool <Icon name="arrow" size={16} />
         </span>
-      </button>
+      </a>
       <button
         className={`card-favourite icon-button ${favourites.includes(tool.id) ? "is-saved" : ""}`}
         aria-label={`${favourites.includes(tool.id) ? "Unsave" : "Save"} ${tool.name}`}
@@ -3567,30 +4534,113 @@ function App() {
       </button>
     </article>
   );
+  const guideCards = (
+    <div className="guide-grid">
+      {GUIDES.map((g) => (
+        <a
+          className="guide-card"
+          href={routeHref(`guides/${g.slug}/`)}
+          key={g.slug}
+        >
+          <span className="eyeline">PRACTICAL GUIDE</span>
+          <h2>{g.title}</h2>
+          <p>{g.description}</p>
+          <span className="text-link">Read the guide →</span>
+        </a>
+      ))}
+    </div>
+  );
+  const categories = (
+    <div className="category-tiles">
+      {Object.entries(CATEGORY_LABELS).map(([id, label]) => (
+        <a href={routeHref(`categories/${id}/`)} key={id}>
+          <span className={`tool-icon category-${id}`}>
+            <Icon name={CATEGORY_ICONS[id] ?? "spark"} />
+          </span>
+          <h3>{label}</h3>
+          <span>
+            {TOOL_LIST.filter((t) => t.category === id).length} tools →
+          </span>
+        </a>
+      ))}
+    </div>
+  );
   return (
-    <div className="site-app">
-      <a className="skip-link" href="#main-content" onClick={event => {event.preventDefault(); const main = document.getElementById("main-content"); main?.focus(); main?.scrollIntoView();}}>
+    <div
+      className="site-app"
+      onClick={(e) => {
+        const anchor = (e.target as HTMLElement).closest("a");
+        if (
+          !anchor ||
+          anchor.target === "_blank" ||
+          anchor.hasAttribute("download") ||
+          e.metaKey ||
+          e.ctrlKey ||
+          e.shiftKey ||
+          e.altKey ||
+          e.button !== 0 ||
+          e.defaultPrevented
+        )
+          return;
+        const url = new URL(anchor.href);
+        const base = new URL(routeHref(""), location.origin);
+        if (
+          url.origin === location.origin &&
+          url.pathname.startsWith(base.pathname) &&
+          !url.hash
+        ) {
+          e.preventDefault();
+          setSearch("");
+          navigate(url.pathname.slice(base.pathname.length));
+        }
+      }}
+    >
+      <a
+        className="skip-link"
+        href="#main-content"
+        onClick={(e) => {
+          e.preventDefault();
+          const main = document.getElementById("main-content");
+          main?.focus();
+          main?.scrollIntoView();
+        }}
+      >
         Skip to content
       </a>
       <header className="site-header">
         <div className="header-inner">
-          <button
-            onClick={home}
+          <a
+            href={routeHref("")}
             className="brand-button"
             aria-label="Toolinger home"
           >
-            <img src="./toolinger-logo.svg" alt="" width="36" height="36" />
+            <img
+              src={assetUrl("toolinger-logo.svg")}
+              alt=""
+              width="36"
+              height="36"
+            />
             <span>
               toolinger<span className="brand-dot">.</span>
             </span>
-          </button>
+          </a>
           <nav className="header-nav" aria-label="Main navigation">
-            <button onClick={home} className={!activeTool ? "nav-active" : ""}>
-              All tools
-            </button>
-            <button onClick={() => openTool("passport-photo-maker")}>
-              Photo studio
-            </button>
+            {[
+              ["", "Home"],
+              ["tools/", "Tools"],
+              ["daily/", "Daily life"],
+              ["guides/", "Guides"],
+            ].map(([path, label]) => (
+              <a
+                key={label}
+                className={
+                  route === path.replace(/\/$/, "") ? "nav-active" : ""
+                }
+                href={routeHref(path)}
+              >
+                {label}
+              </a>
+            ))}
           </nav>
           <div className="header-search">
             <Icon name="search" size={18} />
@@ -3600,26 +4650,31 @@ function App() {
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
-                if (activeTool) location.hash = "";
+                if (route !== "tools") navigate("tools");
               }}
               placeholder="Find a tool…"
               aria-label="Search tools"
             />
             <kbd>⌘ K</kbd>
           </div>
+          <a
+            className="icon-button saved-link"
+            href={routeHref("saved/")}
+            aria-label="Saved tools"
+          >
+            <Icon name="star" />
+          </a>
           <button
             className="icon-button theme-toggle"
-            onClick={() =>
-              setTheme((current) => (current === "dark" ? "light" : "dark"))
-            }
+            onClick={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
             aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
           >
             <Icon name={theme === "dark" ? "sun" : "moon"} />
           </button>
           <button
             className="icon-button mobile-menu"
-            onClick={() => setMenuOpen(true)}
             aria-label="Browse categories"
+            onClick={() => setMenuOpen(true)}
           >
             <Icon />
           </button>
@@ -3628,11 +4683,13 @@ function App() {
       <main id="main-content" tabIndex={-1}>
         {activeTool ? (
           <div className="workspace-layout page-width">
-            <div className="workspace-breadcrumb">
-              <button onClick={home}>All tools</button>
+            <nav className="workspace-breadcrumb" aria-label="Breadcrumb">
+              <a href={routeHref("tools/")}>All tools</a>
               <span>/</span>
-              <span>{CATEGORY_LABELS[activeTool.category]}</span>
-            </div>
+              <a href={routeHref(`categories/${activeTool.category}/`)}>
+                {CATEGORY_LABELS[activeTool.category]}
+              </a>
+            </nav>
             <div className="workspace-title">
               <div>
                 <span className="eyeline">YOUR WORKSPACE</span>
@@ -3648,8 +4705,8 @@ function App() {
                 <div className="workspace-toolbar">
                   <button
                     className={`toolbar-button ${favourites.includes(activeTool.id) ? "is-saved" : ""}`}
-                    onClick={() => toggleFavourite(activeTool.id)}
                     aria-pressed={favourites.includes(activeTool.id)}
+                    onClick={() => toggleFavourite(activeTool.id)}
                   >
                     <Icon name="star" size={16} />
                     {favourites.includes(activeTool.id) ? "Saved" : "Save tool"}
@@ -3658,23 +4715,30 @@ function App() {
                     className="toolbar-button"
                     onClick={async () => {
                       try {
-                        await copyToClipboard(location.href);
+                        await copyToClipboard(
+                          new URL(
+                            routeHref(`tools/${activeTool.id}/`),
+                            location.origin,
+                          ).href,
+                        );
                         setNotice("Tool link copied");
                       } catch {
                         setNotice("Select the address bar to copy this link");
                       }
                     }}
                   >
-                    <Icon name="link" size={16} /> Share link
+                    <Icon name="link" size={16} />
+                    Share link
                   </button>
                   <button
                     className="toolbar-button"
                     onClick={() => {
                       setSampleTool("");
-                      setReset((current) => current + 1);
+                      setReset((n) => n + 1);
                     }}
                   >
-                    <Icon name="reset" size={16} /> Reset
+                    <Icon name="reset" size={16} />
+                    Reset
                   </button>
                 </div>
                 {[
@@ -3691,7 +4755,7 @@ function App() {
                     <button
                       onClick={() => {
                         setSampleTool(activeTool.id);
-                        setReset((current) => current + 1);
+                        setReset((n) => n + 1);
                       }}
                     >
                       Try an example <Icon name="arrow" size={14} />
@@ -3704,24 +4768,27 @@ function App() {
                   }
                 >
                   <ToolBoundary key={`${activeTool.id}-${reset}`}>
-                    <div key={activeTool.id} data-testid="tool-content">
-                      {renderActiveTool()}
-                    </div>
+                    <div data-testid="tool-content">{renderActiveTool()}</div>
                   </ToolBoundary>
                 </SampleContext.Provider>
               </section>
               <aside className="workspace-help">
                 <h2>A little guidance</h2>
                 <ol>
-                  <li>Enter your content or choose a file.</li>
+                  <li>
+                    {activeTool.engine === "lifestyle"
+                      ? "Enter your plans or values."
+                      : "Enter content or choose a file."}
+                  </li>
                   <li>Adjust the options and run the tool.</li>
-                  <li>Review, then copy or download.</li>
+                  <li>Review, then save or download.</li>
                 </ol>
                 <div className="help-note">
                   <Icon name="shield" />
                   <p>
-                    Your inputs stay in this browser. AI tools download models
-                    on first use.
+                    {activeTool.engine === "lifestyle"
+                      ? "Plans save locally. Export a backup in My space."
+                      : "Your inputs stay in this browser. AI downloads models on first use."}
                   </p>
                 </div>
                 {["health", "finance"].includes(activeTool.category) ? (
@@ -3730,12 +4797,9 @@ function App() {
                     qualified professional.
                   </p>
                 ) : null}
-                <button
-                  className="text-link"
-                  onClick={() => setLegalPage("contact")}
-                >
-                  Report an issue <Icon name="arrow" size={15} />
-                </button>
+                <a className="text-link" href={routeHref("contact/")}>
+                  Report an issue →
+                </a>
                 <h2 className="related-heading">More to explore</h2>
                 {TOOL_LIST.filter(
                   (t) =>
@@ -3744,329 +4808,539 @@ function App() {
                 )
                   .slice(0, 4)
                   .map((t) => (
-                    <button
+                    <a
                       className="related-tool"
+                      href={routeHref(`tools/${t.id}/`)}
                       key={t.id}
-                      onClick={() => openTool(t.id)}
                     >
                       {t.name}
                       <Icon name="arrow" size={15} />
-                    </button>
+                    </a>
                   ))}
               </aside>
             </div>
+            <section className="tool-explainer">
+              <h2>Make the most of {activeTool.name.toLowerCase()}</h2>
+              <p>
+                {activeTool.description}{" "}
+                {activeTool.engine === "lifestyle"
+                  ? "Persistent planners save on this browser. Calculator results are temporary; use their download controls to keep them."
+                  : "Processing runs on your device. Keep original files and check exported results before sharing them."}
+              </p>
+              <details>
+                <summary>Do I need an account?</summary>
+                <p>
+                  No. Tools work without signing up. Local data does not sync
+                  between devices.
+                </p>
+              </details>
+              <details>
+                <summary>How do I keep my results?</summary>
+                <p>
+                  Use the tool’s copy or download controls where available. Back
+                  up daily-life data from My space. Clearing browser site data
+                  removes local saves.
+                </p>
+              </details>
+              <details>
+                <summary>Can I use this on my phone?</summary>
+                <p>
+                  Yes, the layout adapts to phones. Larger files and AI models
+                  need more memory and a current browser.
+                </p>
+              </details>
+            </section>
+            <AdPlacement placement="tool" />
           </div>
-        ) : (
+        ) : route === "" ? (
           <>
-            {!search && category === "all" ? (
-              <section className="home-hero page-width">
-                <div className="hero-copy-new">
-                  <span className="hero-pill">
-                    <span /> SMALL TASKS. SORTED.
-                  </span>
-                  <h1>
-                    Your everyday tasks.
-                    <br />
-                    <span>A little easier.</span>
-                  </h1>
-                  <p>
-                    A handy collection of tools for your files, words and ideas.
-                    Open a tool. Get it done. Carry on.
-                  </p>
-                  <div className="hero-buttons">
-                    <button
-                      className="site-primary"
-                      onClick={() =>
-                        document
-                          .getElementById("tool-directory")
-                          ?.scrollIntoView({ behavior: "smooth" })
-                      }
-                    >
-                      Explore the toolkit <Icon name="arrow" size={18} />
-                    </button>
-                    <span>
-                      <Icon name="shield" size={17} /> Free. No sign-up.
-                    </span>
-                  </div>
-                  <div className="hero-small-stats">
-                    <strong>{TOOL_LIST.length} tools</strong>
-                    <span>13 categories</span>
-                    <span>Made for your browser</span>
-                  </div>
-                </div>
-                <div className="hero-showcase">
-                  <span className="showcase-label">
-                    <Icon name="spark" size={16} /> THE PHOTO STUDIO
-                  </span>
-                  <div className="studio-art" aria-hidden="true">
-                    <div className="art-grid" />
-                    <div className="art-photo">
-                      <svg viewBox="0 0 140 180" fill="none">
-                        <rect width="140" height="180" fill="#d9ebe6" />
-                        <path
-                          d="M15 180v-24c0-34 110-34 110 0v24"
-                          fill="#445753"
-                        />
-                        <path d="M52 105h36v30H52z" fill="#bc8c70" />
-                        <ellipse
-                          cx="70"
-                          cy="69"
-                          rx="33"
-                          ry="43"
-                          fill="#d3a184"
-                        />
-                        <path
-                          d="M37 68C24 8 113 0 106 69L93 44C69 57 50 46 45 42Z"
-                          fill="#3b3435"
-                        />
-                        <path
-                          d="M56 73h2m24 0h2"
-                          stroke="#453a35"
-                          strokeWidth="3"
-                          strokeLinecap="round"
-                        />
-                        <path
-                          d="M63 91q7 5 14 0"
-                          stroke="#925c4b"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                        />
-                      </svg>
-                      <div className="art-guide" />
-                    </div>
-                    <span className="art-measure measure-v">45 mm</span>
-                    <span className="art-measure measure-h">35 mm</span>
-                    <div className="art-chip">
-                      <span /> Ready for a fresh background
-                    </div>
-                    <div className="art-swatches">
-                      <i />
-                      <i />
-                      <i />
-                    </div>
-                  </div>
-                  <h2>A better ID photo, in minutes.</h2>
-                  <p>
-                    Frame your portrait, choose a size and export a print sheet.
-                  </p>
-                  <button
-                    className="showcase-link"
-                    onClick={() => openTool("passport-photo-maker")}
-                  >
-                    Open photo studio <Icon name="arrow" size={18} />
-                  </button>
-                </div>
-              </section>
-            ) : null}
-            <section
-              id="tool-directory"
-              className="directory-section page-width"
-            >
-              <div className="directory-heading">
-                <div>
-                  <span className="eyeline">THE TOOLKIT</span>
-                  <h2>
-                    {search
-                      ? "Search results"
-                      : category === "favourites"
-                        ? "Your saved tools"
-                        : "Find your next shortcut."}
-                  </h2>
-                </div>
-                <span className="tool-count">
-                  {tools.length} tools to explore
+            <section className="home-hero page-width">
+              <div className="hero-copy-new">
+                <span className="hero-pill">
+                  <span /> YOUR EVERYDAY COMPANION
                 </span>
+                <h1>
+                  Less busywork.
+                  <br />
+                  <span>More living.</span>
+                </h1>
+                <p>
+                  Tools for your files, plans and daily decisions. One useful
+                  place to get things done and keep life moving.
+                </p>
+                <div className="hero-buttons">
+                  <a className="site-primary" href={routeHref("daily/")}>
+                    Open your daily space <Icon name="arrow" size={18} />
+                  </a>
+                  <a className="hero-secondary" href={routeHref("tools/")}>
+                    Browse all tools →
+                  </a>
+                </div>
+                <div className="hero-small-stats">
+                  <strong>{TOOL_LIST.length} tools</strong>
+                  <span>{Object.keys(CATEGORY_LABELS).length} categories</span>
+                  <span>Free. No account.</span>
+                </div>
               </div>
-              <div className="directory-layout">
-                <aside
-                  className="category-sidebar"
-                  aria-label="Tool categories"
-                >
-                  <button
-                    className={category === "all" ? "selected" : ""}
-                    onClick={() => setCategory("all")}
-                  >
-                    <Icon size={18} />
-                    All tools<span>{TOOL_LIST.length}</span>
-                  </button>
-                  <button
-                    className={category === "favourites" ? "selected" : ""}
-                    onClick={() => setCategory("favourites")}
-                  >
-                    <Icon name="star" size={18} />
-                    Saved tools<span>{favourites.length}</span>
-                  </button>
-                  <div className="category-divider" />
-                  {Object.entries(CATEGORY_LABELS).map(([id, label]) => (
-                    <button
-                      key={id}
-                      className={category === id ? "selected" : ""}
-                      aria-pressed={category === id}
-                      onClick={() => setCategory(id)}
-                    >
-                      <Icon name={CATEGORY_ICONS[id]} size={18} />
-                      {label}
-                      <span>
-                        {TOOL_LIST.filter((t) => t.category === id).length}
-                      </span>
-                    </button>
-                  ))}
-                </aside>
-                <div className="directory-content">
-                  {!search && category === "all" && recent.length ? (
-                    <div className="recent-row">
-                      <span>Recently opened</span>
-                      {recent.map((id) => {
-                        const t = TOOL_LIST.find((item) => item.id === id);
-                        return t ? (
-                          <button key={id} onClick={() => openTool(id)}>
-                            {t.name}
-                          </button>
-                        ) : null;
-                      })}
-                    </div>
-                  ) : null}
-                  <div className="catalog-grid">{tools.map(card)}</div>
-                  {!tools.length ? (
-                    <div className="empty-state">
-                      <Icon
-                        name={category === "favourites" ? "star" : "search"}
-                        size={32}
-                      />
-                      <h3>
-                        {category === "favourites" && !search
-                          ? "Keep your go-to tools close."
-                          : "No tools found."}
-                      </h3>
-                      <p>
-                        {category === "favourites" && !search
-                          ? "Tap the star on any tool to save it here."
-                          : "Try a shorter search or another category."}
-                      </p>
-                      <button
-                        className="site-primary"
-                        onClick={() => {
-                          setSearch("");
-                          setCategory("all");
-                        }}
-                      >
-                        Browse all tools
-                      </button>
-                    </div>
-                  ) : null}
+              <div className="home-day-card">
+                <div className="day-card-top">
+                  <span className="eyeline">A LITTLE STRUCTURE</span>
+                  <span>Today</span>
+                </div>
+                <h2>Make room for a better day.</h2>
+                <a href={routeHref("tools/daily-planner/")}>
+                  <span className="day-check">✓</span>
+                  <span>
+                    Plan what matters
+                    <small>Tasks, priorities & deadlines</small>
+                  </span>
+                  <Icon name="arrow" size={18} />
+                </a>
+                <a href={routeHref("tools/focus-timer/")}>
+                  <span className="day-check">25</span>
+                  <span>
+                    Find your focus<small>One task. One session.</small>
+                  </span>
+                  <Icon name="arrow" size={18} />
+                </a>
+                <a href={routeHref("tools/expense-tracker/")}>
+                  <span className="day-check">₹</span>
+                  <span>
+                    See where it goes<small>Expenses & monthly budgets</small>
+                  </span>
+                  <Icon name="arrow" size={18} />
+                </a>
+                <div className="day-card-note">
+                  <Icon name="shield" size={16} />
+                  Your plans stay on your device.
                 </div>
               </div>
             </section>
+            <section className="home-section page-width">
+              <div className="section-heading">
+                <div>
+                  <span className="eyeline">START SOMEWHERE SIMPLE</span>
+                  <h2>A shortcut for your next task.</h2>
+                </div>
+                <a className="text-link" href={routeHref("tools/")}>
+                  See every tool →
+                </a>
+              </div>
+              <div className="catalog-grid home-grid">
+                {[
+                  "daily-planner",
+                  "habit-tracker",
+                  "passport-photo-maker",
+                  "expense-tracker",
+                  "shopping-list",
+                  "focus-timer",
+                  "merge-pdf",
+                  "qr-code-generator",
+                ].map((id) => card(TOOL_LIST.find((t) => t.id === id)!))}
+              </div>
+            </section>
+            <section className="home-section page-width">
+              <div className="section-heading">
+                <div>
+                  <span className="eyeline">PICK YOUR SPACE</span>
+                  <h2>A place for every kind of task.</h2>
+                </div>
+              </div>
+              {categories}
+            </section>
+            <section className="home-section page-width">
+              <div className="section-heading">
+                <div>
+                  <span className="eyeline">HELP ALONG THE WAY</span>
+                  <h2>Useful tools. Clear guidance.</h2>
+                </div>
+                <a className="text-link" href={routeHref("guides/")}>
+                  All guides →
+                </a>
+              </div>
+              <div className="guide-grid">
+                {GUIDES.slice(0, 3).map((g) => (
+                  <a
+                    className="guide-card"
+                    href={routeHref(`guides/${g.slug}/`)}
+                    key={g.slug}
+                  >
+                    <h2>{g.title}</h2>
+                    <p>{g.description}</p>
+                    <span className="text-link">Read guide →</span>
+                  </a>
+                ))}
+              </div>
+            </section>
           </>
+        ) : route === "daily" ? (
+          <section className="content-page page-width">
+            <DailyHub />
+            <div className="section-heading">
+              <div>
+                <span className="eyeline">SMALL TOOLS, DAILY USE</span>
+                <h2>Your everyday toolkit.</h2>
+              </div>
+              <a className="text-link" href={routeHref("my-space/")}>
+                Backups & my data →
+              </a>
+            </div>
+            <div className="catalog-grid home-grid">
+              {TOOL_LIST.filter((t) => t.category === "lifestyle").map(card)}
+            </div>
+          </section>
+        ) : route === "my-space" ? (
+          <section className="content-page page-width">
+            <div className="page-intro">
+              <span className="eyeline">MY SPACE</span>
+              <h1>Keep your progress.</h1>
+              <p>
+                Export, restore or clear your daily-life data. Everything stays
+                on this device unless you download a backup.
+              </p>
+            </div>
+            <MySpace />
+          </section>
+        ) : route === "guides" ? (
+          <section className="content-page page-width">
+            <div className="page-intro">
+              <span className="eyeline">PRACTICAL GUIDES</span>
+              <h1>A little help goes a long way.</h1>
+              <p>
+                Clear, useful steps for documents, routines, budgeting and
+                browser privacy.
+              </p>
+            </div>
+            {guideCards}
+          </section>
+        ) : guide ? (
+          <article className="content-page article-page page-width">
+            <nav className="workspace-breadcrumb">
+              <a href={routeHref("guides/")}>All guides</a>
+              <span>/</span>
+              <span>Practical guide</span>
+            </nav>
+            <div className="page-intro">
+              <span className="eyeline">TOOLINGER GUIDES</span>
+              <h1>{guide.title}</h1>
+              <p>{guide.description}</p>
+            </div>
+            <div className="article-layout">
+              <div>
+                {guide.sections.map((s) => (
+                  <section className="article-section" key={s.title}>
+                    <h2>{s.title}</h2>
+                    <p>{s.body}</p>
+                  </section>
+                ))}
+                <AdPlacement placement="guide" />
+              </div>
+              <aside className="hub-panel">
+                <h2>Tools in this guide</h2>
+                {guide.tools.map((id) => (
+                  <a
+                    className="related-tool"
+                    href={routeHref(`tools/${id}/`)}
+                    key={id}
+                  >
+                    {TOOL_LIST.find((t) => t.id === id)?.name} →
+                  </a>
+                ))}
+                <a className="text-link" href={routeHref("my-space/")}>
+                  Manage local backups →
+                </a>
+              </aside>
+            </div>
+          </article>
+        ) : policy ? (
+          <article className="content-page policy-page page-width">
+            <nav className="workspace-breadcrumb">
+              <a href={routeHref("")}>Home</a>
+              <span>/</span>
+              <span>Policies & support</span>
+            </nav>
+            <div className="page-intro">
+              <span className="eyeline">POLICIES & SUPPORT</span>
+              <h1>{policy.title}</h1>
+            </div>
+            <div className="article-layout">
+              <div className="policy-document">
+                {policy.body.split("\n\n").map((paragraph, i) => (
+                  <p key={i}>{paragraph}</p>
+                ))}
+                {route === "contact" ? (
+                  <a
+                    className="daily-primary"
+                    href="mailto:lootchaser2026@gmail.com"
+                  >
+                    Email support
+                  </a>
+                ) : null}
+                {["privacy", "cookies", "advertising"].includes(route) ? (
+                  <button
+                    className="daily-secondary"
+                    onClick={() =>
+                      window.dispatchEvent(new Event("toolinger:privacy"))
+                    }
+                  >
+                    Advertising privacy choices
+                  </button>
+                ) : null}
+              </div>
+              <aside className="hub-panel">
+                <h2>Useful links</h2>
+                {Object.entries(LEGAL_CONTENT)
+                  .filter(([id]) => id !== route)
+                  .map(([id, p]) => (
+                    <a
+                      className="related-tool"
+                      href={routeHref(id + "/")}
+                      key={id}
+                    >
+                      {p.title} →
+                    </a>
+                  ))}
+                <a className="related-tool" href={routeHref("my-space/")}>
+                  My space & backups →
+                </a>
+              </aside>
+            </div>
+          </article>
+        ) : !known ? (
+          <section className="content-page page-width empty-state">
+            <h1>This page is missing.</h1>
+            <p>Your tools are still here.</p>
+            <a className="daily-primary" href={routeHref("tools/")}>
+              Browse all tools
+            </a>
+          </section>
+        ) : (
+          <section
+            className="directory-section content-page page-width"
+            id="tool-directory"
+          >
+            <div className="directory-heading">
+              <div>
+                <span className="eyeline">
+                  {category === "favourites" ? "YOUR TOOLKIT" : "THE TOOLKIT"}
+                </span>
+                <h1>
+                  {search
+                    ? "Search results"
+                    : category === "favourites"
+                      ? "Your saved tools"
+                      : category === "all"
+                        ? "Find your next shortcut."
+                        : CATEGORY_LABELS[category as CategoryId]}
+                </h1>
+                <p>
+                  {category === "favourites"
+                    ? "Keep your go-to tools close."
+                    : category === "all"
+                      ? "Explore practical tools for files, words and everyday life."
+                      : `Explore ${CATEGORY_LABELS[category as CategoryId].toLowerCase()} with clear controls and local processing.`}
+                </p>
+              </div>
+              <div className="directory-options">
+                <span className="tool-count">{tools.length} tools</span>
+                <label>
+                  Sort
+                  <select
+                    value={sort}
+                    onChange={(e) => setSort(e.target.value)}
+                  >
+                    <option value="popular">Featured first</option>
+                    <option value="az">Name A–Z</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+            <div className="directory-layout">
+              <aside className="category-sidebar" aria-label="Tool categories">
+                <a
+                  className={category === "all" ? "selected" : ""}
+                  href={routeHref("tools/")}
+                >
+                  <Icon size={18} />
+                  All tools<span>{TOOL_LIST.length}</span>
+                </a>
+                <a
+                  className={category === "favourites" ? "selected" : ""}
+                  href={routeHref("saved/")}
+                >
+                  <Icon name="star" size={18} />
+                  Saved tools<span>{favourites.length}</span>
+                </a>
+                <div className="category-divider" />
+                {Object.entries(CATEGORY_LABELS).map(([id, label]) => (
+                  <a
+                    key={id}
+                    className={category === id ? "selected" : ""}
+                    href={routeHref(`categories/${id}/`)}
+                    aria-current={category === id ? "page" : undefined}
+                  >
+                    <Icon name={CATEGORY_ICONS[id] ?? "spark"} size={18} />
+                    {label}
+                    <span>
+                      {TOOL_LIST.filter((t) => t.category === id).length}
+                    </span>
+                  </a>
+                ))}
+              </aside>
+              <div className="directory-content">
+                {!search && category === "all" && recent.length ? (
+                  <div className="recent-row">
+                    <span>Recently opened</span>
+                    {recent.map((id) => {
+                      const t = TOOL_LIST.find((t) => t.id === id);
+                      return t ? (
+                        <a key={id} href={routeHref(`tools/${id}/`)}>
+                          {t.name}
+                        </a>
+                      ) : null;
+                    })}
+                  </div>
+                ) : null}
+                <div className="catalog-grid">{tools.map(card)}</div>
+                {!tools.length ? (
+                  <div className="empty-state">
+                    <Icon
+                      name={category === "favourites" ? "star" : "search"}
+                      size={32}
+                    />
+                    <h3>
+                      {category === "favourites" && !search
+                        ? "Keep your go-to tools close."
+                        : "No tools found."}
+                    </h3>
+                    <p>
+                      {category === "favourites" && !search
+                        ? "Tap the star on any tool to save it here."
+                        : "Try a shorter search or another category."}
+                    </p>
+                    <a className="daily-primary" href={routeHref("tools/")}>
+                      Browse all tools
+                    </a>
+                  </div>
+                ) : null}
+                <AdPlacement placement="directory" />
+              </div>
+            </div>
+          </section>
         )}
       </main>
       <footer className="site-footer page-width">
         <div className="footer-top">
-          <button className="brand-button" onClick={home}>
-            <img src="./toolinger-logo.svg" alt="" width="30" height="30" />
+          <a className="brand-button" href={routeHref("")}>
+            <img
+              src={assetUrl("toolinger-logo.svg")}
+              alt=""
+              width="30"
+              height="30"
+            />
             <span>
               toolinger<span className="brand-dot">.</span>
             </span>
-          </button>
+          </a>
           <p>A little help for everyday digital work.</p>
           <span className="footer-privacy">
-            <Icon name="shield" size={16} /> Your files stay yours.
+            <Icon name="shield" size={16} />
+            Your files stay yours.
           </span>
+        </div>
+        <div className="footer-page-links">
+          <a href={routeHref("tools/")}>All tools</a>
+          <a href={routeHref("daily/")}>Daily dashboard</a>
+          <a href={routeHref("saved/")}>Saved tools</a>
+          <a href={routeHref("guides/")}>Guides</a>
+          <a href={routeHref("my-space/")}>My space & backups</a>
+          <a href={routeHref("tools/passport-photo-maker/")}>Photo studio</a>
         </div>
         <div className="footer-bottom-new">
           <span>© {new Date().getFullYear()} Toolinger</span>
           <nav aria-label="Policies">
-            {Object.entries(LEGAL_CONTENT).map(([id, page]) => (
-              <button key={id} onClick={() => setLegalPage(id)}>
-                {page.title.replace("Toolinger", "").trim()}
-              </button>
+            {Object.entries(LEGAL_CONTENT).map(([id, p]) => (
+              <a key={id} href={routeHref(id + "/")}>
+                {p.title.replace("Toolinger", "").trim()}
+              </a>
             ))}
             <button onClick={() => setLegalPage("choices")}>
               Privacy choices
+            </button>
+            <button
+              onClick={() =>
+                window.dispatchEvent(new Event("toolinger:privacy"))
+              }
+            >
+              Ad privacy choices
             </button>
           </nav>
         </div>
       </footer>
       {menuOpen ? (
         <Dialog
-          title="Browse categories"
+          title="Explore Toolinger"
           close={() => setMenuOpen(false)}
           drawer
         >
           <div className="drawer-categories">
             {[
-              ["all", "All tools"],
-              ["favourites", "Saved tools"],
-              ...Object.entries(CATEGORY_LABELS),
-            ].map(([id, label]) => (
-              <button
-                key={id}
-                onClick={() => {
-                  location.hash = "";
-                  setCategory(id);
-                  setMenuOpen(false);
-                  setSearch("");
-                }}
-              >
-                <Icon
-                  name={
-                    CATEGORY_ICONS[id] ??
-                    (id === "favourites" ? "star" : "grid")
-                  }
-                />
+              ["", "Home"],
+              ["tools/", "All tools"],
+              ["daily/", "Daily dashboard"],
+              ["guides/", "Guides"],
+              ["saved/", "Saved tools"],
+              ["my-space/", "My space & backups"],
+              ...Object.entries(CATEGORY_LABELS).map(([id, label]) => [
+                `categories/${id}/`,
+                label,
+              ]),
+            ].map(([path, label]) => (
+              <a key={path} href={routeHref(path)}>
+                <Icon />
                 {label}
                 <Icon name="arrow" size={16} />
-              </button>
+              </a>
             ))}
           </div>
         </Dialog>
       ) : null}
       {legalPage ? (
-        <Dialog
-          title={LEGAL_CONTENT[legalPage]?.title ?? "Privacy choices"}
-          close={() => setLegalPage(null)}
-        >
-          {legalPage === "choices" ? (
-            <div className="policy-body">
-              <p>
-                Your theme, saved tools and recent tool IDs are stored on this
-                device. No advertising or analytics scripts are active.
-              </p>
-              <p>
-                Clear notes in Notepad. Remove offline app caches from your
-                browser’s site-data settings.
-              </p>
-              <button
-                className="site-primary"
-                onClick={() => {
-                  setFavourites([]);
-                  setRecent([]);
-                  setTheme("light");
-                  try {
-                    localStorage.removeItem("toolinger-consent");
-                  } catch {}
-                  setNotice("Tool preferences cleared");
-                }}
-              >
-                Clear tool preferences
-              </button>
-            </div>
-          ) : (
-            <div className="policy-body">
-              {LEGAL_CONTENT[legalPage]?.body
-                .split("\n\n")
-                .map((paragraph, i) => (
-                  <p key={i}>{paragraph}</p>
-                ))}
-              {legalPage === "contact" ? (
-                <a className="text-link" href="mailto:lootchaser2026@gmail.com">
-                  Email support <Icon name="arrow" size={16} />
-                </a>
-              ) : null}
-            </div>
-          )}
+        <Dialog title="Privacy choices" close={() => setLegalPage(null)}>
+          <div className="policy-body">
+            <p>
+              Your theme, saved tools and recent tool IDs stay on this device.
+              Daily-life data is managed separately in My space.
+            </p>
+            <button
+              className="daily-primary"
+              onClick={() => {
+                setFavourites([]);
+                setRecent([]);
+                setTheme("light");
+                setNotice("Tool preferences cleared");
+              }}
+            >
+              Clear tool preferences
+            </button>
+            <p>
+              <a className="text-link" href={routeHref("my-space/")}>
+                Manage daily-life data →
+              </a>
+            </p>
+            <button
+              className="daily-secondary"
+              onClick={() => {
+                setLegalPage(null);
+                window.dispatchEvent(new Event("toolinger:privacy"));
+              }}
+            >
+              Manage advertising choices
+            </button>
+          </div>
         </Dialog>
       ) : null}
+      <ConsentControls />
       {notice ? (
         <div className="site-toast" role="status">
           {notice}

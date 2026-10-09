@@ -4,7 +4,8 @@ import test from "node:test";
 
 const source = await readFile(new URL("../app.tsx", import.meta.url), "utf8");
 const index = await readFile(new URL("../index.html", import.meta.url), "utf8");
-const tools = [...source.matchAll(/\{ id: "([^"]+)", name: "([^"]+)", category: "([^"]+)", description: "([^"]+)", keywords: \[[^\]]*\], engine: "([^"]+)"(?:, mode: "([^"]+)")? \}/g)]
+const catalog = await readFile(new URL("../src/catalog.ts", import.meta.url), "utf8");
+const tools = [...catalog.matchAll(/\{ id: "([^"]+)", name: "([^"]+)", category: "([^"]+)", description: "([^"]+)", keywords: \[[^\]]*\], engine: "([^"]+)"(?:, mode: "([^"]+)")? \}/g)]
   .map((match) => ({ id: match[1], name: match[2], category: match[3], engine: match[5], mode: match[6] }));
 
 test("catalog has at least 100 real entries", () => assert.ok(tools.length >= 100, `found ${tools.length}`));

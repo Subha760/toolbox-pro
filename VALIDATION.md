@@ -1,12 +1,14 @@
-# Upgrade verification — 8 October 2026
+# Toolinger 4 upgrade verification — 9 October 2026
 
-- Strict TypeScript checking, 17 unit tests, production build and 10 optional backend contract tests pass.
-- Browser checks cover all 120 catalogue entries with sample inputs/downloads or validation, plus search, saved tools, themes, direct routes, state reset, policy dialogs, mobile widths, print-sheet sizing and safe input handling.
-- Actual inference checked separately: positive sentiment, semantic similarity, extractive summary and keyword extraction all return meaningful output with Transformers.js 4.
-- Portrait background removal checked with a real portrait using MediaPipe; reviewed transparent cutout and final white-background output.
-- Passport export dimensions: 413 × 531 pixels for the common 35 × 45 mm template. Print PDF: 288 × 432 points (4 × 6 inches), six standard-size photos with margins. Changing settings clears the old preview.
-- Light and dark desktop layouts reviewed; 390-pixel mobile directory and passport workspace checked for horizontal overflow.
-- `npm audit` reports zero known vulnerabilities across production and development dependencies at verification time.
-- Initial app JavaScript changed from roughly 291 KB gzip to 103 KB gzip. PDF, QR, formatters and text AI load on demand. First-use AI still requires model downloads.
+- Strict TypeScript checks, 26 unit tests, production build and 10 optional backend contract tests pass.
+- 134 catalogue tools: 120 existing tools plus 14 daily-life tools. Browser coverage exercises sample input, downloads, saved data or empty-input validation for every tool.
+- 167 generated standalone pages have canonical metadata and working public routes. Policy and guide content remains readable without JavaScript; sitemap and robots files are generated.
+- Daily-life checks cover persistent tasks, habit completion, expenses in cents, shopping quantities, hydration undo, meal-to-shopping integration, focus timer pause/reset, savings, bill splitting, fractional recipe quantities, leap-year date arithmetic, world time zones and packing lists.
+- Backup import validates all sections before offering a reviewed restore. Invalid backups leave saved data unchanged. Export and confirmed clearing are checked.
+- Image filters run in a transferable-buffer Web Worker; unit checks verify alpha preservation and convolution results. Processing controls block duplicate runs and validate image-size/dimension limits.
+- Passport workflows verify PNG/JPG downloads, settings invalidation, framing, output dimensions and 4 × 6 inch print PDFs. Actual MediaPipe background removal was separately checked with a real portrait at the dedicated `/tools/passport-photo-maker/` URL.
+- Desktop appearance reviewed; 390-pixel mobile directory, passport and meal-planning pages checked for horizontal overflow. Light/dark theme persistence, normal URLs, legacy hash links and navigation are checked.
+- AdSense remains disabled. Browser checks confirm no advertising requests are sent and local privacy choices persist. A Google-certified CMP, public publisher/ad-unit IDs and domain-root ads.txt must be configured before activation; see ADSENSE.md.
+- `npm audit` reports zero known vulnerabilities in the installed dependencies.
 
-These checks do not certify government acceptance of photos, every image/file edge case, or every browser/device. Network-dependent inference is kept out of the deployment gate; its input-validation workflows remain in the browser suite.
+The four local text-AI tools use empty-input validation in the deployment gate; actual model inference was checked separately during the previous upgrade. Models need network access on first use. These checks do not certify official acceptance of passport photos, every file format or every device/browser.

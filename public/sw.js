@@ -1,10 +1,10 @@
-const CACHE = "toolinger-v4";
+const CACHE = "toolinger-v5";
 const SHELL = ["./", "./manifest.webmanifest", "./toolinger-logo.svg"];
 self.addEventListener("install", event => event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL))));
 self.addEventListener("activate", event => event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key.startsWith("toolinger-") && key !== CACHE).map(key => caches.delete(key))))));
 self.addEventListener("fetch", event => {
   const url = new URL(event.request.url);
-  if (event.request.method !== "GET" || url.origin !== self.location.origin || url.pathname.endsWith("/ai-config.json")) return;
+  if (event.request.method !== "GET" || url.origin !== self.location.origin || (url.pathname.endsWith("/ai-config.json") || url.pathname.endsWith("/ad-config.json"))) return;
   event.respondWith(fetch(event.request).then(response => {
     if (response.ok) {
       const copy = response.clone();
