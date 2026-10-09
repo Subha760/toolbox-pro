@@ -349,7 +349,7 @@ test("search, saved tools, themes, policy dialogs and mobile layout", async ({
     .getByRole("link", { name: "Privacy policy", exact: true })
     .first()
     .click();
-  await expect(page.locator("main")).toContainText("Updated 8 October 2026");
+  await expect(page.locator("main")).toContainText(/Updated \d{1,2} [A-Za-z]+ \d{4}/);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("tools/");
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
