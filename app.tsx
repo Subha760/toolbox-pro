@@ -5479,6 +5479,14 @@ function App() {
             </button>
           </nav>
         </div>
+        <a
+          href="https://github.com/Subha760/toolbox-pro/releases/download/v4.1.0/Toolinger-4.1.0.apk"
+          target="_blank"
+          rel="noreferrer"
+          className="text-link"
+        >
+          Download Android app ↗
+        </a>
       </footer>
       {menuOpen ? (
         <Dialog

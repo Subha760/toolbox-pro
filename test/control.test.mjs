@@ -24,6 +24,13 @@ test("admin rejects missing and forged authentication without reading database",
     );
     assert.equal(r.status, 401);
   }
+  const backup = await worker.fetch(
+    new Request(
+      "https://tools.choicematrix.in/admin/downloads/signing-backup.zip",
+    ),
+    env,
+  );
+  assert.equal(backup.status, 401);
   assert.equal(
     await authenticate(new Request("https://tools.choicematrix.in"), {}),
     null,
@@ -141,6 +148,25 @@ test("owner JWT requires a valid signature, matching email and audience, and a l
       ),
       "owner@example.com",
     );
+    const backupRequest = new Request(
+      "https://tools.choicematrix.in/admin/downloads/signing-backup.zip",
+      { headers: { "Cf-Access-Jwt-Assertion": await token() } },
+    );
+    const backup = await worker.fetch(backupRequest, {
+      ...env,
+      SIGNING_BACKUP_0: Buffer.from("private-test-backup")
+        .toString("base64")
+        .slice(0, 8),
+      SIGNING_BACKUP_1: Buffer.from("private-test-backup")
+        .toString("base64")
+        .slice(8, 16),
+      SIGNING_BACKUP_2: Buffer.from("private-test-backup")
+        .toString("base64")
+        .slice(16),
+    });
+    assert.equal(backup.status, 200);
+    assert.equal(backup.headers.get("cache-control"), "no-store");
+    assert.equal(await backup.text(), "private-test-backup");
     for (const invalid of [
       { email: "someone@example.com" },
       { aud: ["other-aud"] },

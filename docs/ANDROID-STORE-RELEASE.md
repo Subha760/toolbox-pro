@@ -39,3 +39,5 @@ The app has no public user accounts or account creation. Usage collection is opt
 Health and financial calculators are estimates; complete applicable health-app declarations using the available calculators and their disclaimer. Choose age audience/content rating in the store questionnaires according to your intended audience. Verify photo upload, model download, background removal, studio colours, PDF/image export, Android save/share, offline bundled tools and owner login on real devices before production rollout.
 
 Browser tests and package/signature checks do not replace physical Android device testing or store approval. These packages have not been submitted to either store by this session.
+
+The owner can download the private signing backup after Cloudflare Access sign-in at https://tools.choicematrix.in/admin/downloads/signing-backup.zip. The backup is held in encrypted Worker secret bindings, not the repository, public release or dashboard export. The download route independently validates the owner JWT and uses `no-store`. Keep an offline copy before changing the Cloudflare account or Worker. Preserve `secret_text` bindings when deploying Worker updates.

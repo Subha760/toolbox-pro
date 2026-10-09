@@ -321,6 +321,30 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     try {
+      if (url.pathname === "/admin/downloads/signing-backup.zip") {
+        if (!(await authenticate(request, env)))
+          return json({ error: "Owner sign-in required" }, 401);
+        const backup = [
+          env.SIGNING_BACKUP_0,
+          env.SIGNING_BACKUP_1,
+          env.SIGNING_BACKUP_2,
+        ].join("");
+        if (
+          !env.SIGNING_BACKUP_0 ||
+          !env.SIGNING_BACKUP_1 ||
+          !env.SIGNING_BACKUP_2
+        )
+          return json({ error: "Signing backup is not configured" }, 404);
+        return new Response(decode(backup), {
+          headers: {
+            "content-type": "application/zip",
+            "content-disposition":
+              "attachment; filename=Toolinger-private-signing-backup.zip",
+            "cache-control": "no-store",
+            "x-content-type-options": "nosniff",
+          },
+        });
+      }
       if (url.pathname.startsWith("/api/")) {
         const origin = request.headers.get("Origin");
         const publicPath = [
@@ -387,6 +411,7 @@ export default {
         headers.set("cache-control", "public, max-age=31536000, immutable");
       if (url.pathname.startsWith("/admin")) {
         headers.set("cache-control", "no-store");
+        headers.set("x-frame-options", "DENY");
         headers.set("x-robots-tag", "noindex, nofollow");
       }
       return new Response(response.body, { status: response.status, headers });

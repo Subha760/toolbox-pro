@@ -619,6 +619,29 @@ export default function Admin() {
                   Download dashboard JSON
                 </button>
                 <p>
+                  <a
+                    className="owner-primary"
+                    href="/admin/downloads/signing-backup.zip"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Download private signing backup
+                  </a>
+                </p>
+                <p>
+                  Keep an offline copy of your Android signing backup. It
+                  contains private keys and passwords; never upload it publicly.
+                </p>
+                <p>
+                  <a
+                    href="https://github.com/Subha760/toolbox-pro/releases/download/v4.1.0/Toolinger-Owner-4.1.0.apk"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Download owner Android app ↗
+                  </a>
+                </p>
+                <p>
                   Usage is retained for 90 days; reports for 180 days; owner
                   audit records for 365 days. Cleanup runs daily. Exports
                   include submitted email addresses: keep them private.
