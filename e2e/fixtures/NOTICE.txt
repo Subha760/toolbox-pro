@@ -1,0 +1,4 @@
+Astronaut Eileen Collins, NASA photograph, public domain.
+Fixture copied from scikit-image v0.18.3, skimage/data/astronaut.png.
+Reference: https://scikit-image.org/docs/stable/api/skimage.data.html#skimage.data.astronaut
+NASA credit; use in a technical test does not imply endorsement.

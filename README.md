@@ -23,7 +23,7 @@ The directory includes search, category filters, favourite and recent tools, per
 
 Tool processing happens locally. AI downloads libraries and models on first use; the inputs stay in the browser. There are no active advertising or analytics scripts. Policies live in `src/policies.ts`; keep them synchronized with actual features. Support contact: lootchaser2026@gmail.com.
 
-PDF, QR, formatting and AI libraries load when needed. A service worker provides cached same-origin app assets for repeat visits. AI model downloads require internet access and a capable browser.
+PDF, QR, formatting and AI libraries load when needed. A service worker provides cached same-origin app assets for repeat visits. The photo studio serves MODNet and its CPU WASM runtime from Toolinger; its first use downloads approximately 40 MB, then caches those files. AI model downloads require internet access and a capable browser.
 
 ## Pages and daily-life tools
 
@@ -35,7 +35,7 @@ Google AdSense is prepared but disabled. See [ADSENSE.md](ADSENSE.md) for publis
 
 ## Photo studio
 
-Upload JPG, PNG or WebP, optionally remove the portrait background with on-device MediaPipe AI, choose dimensions, and adjust zoom and horizontal/vertical position. Generate a preview before exporting PNG/JPG or a 4 × 6 inch PDF sheet at 300-DPI sizing. Print the PDF at 100% / actual size. Framing guides are not exported. Changing settings invalidates the previous preview.
+Upload JPG, PNG or WebP, remove portrait backgrounds with local MODNet matting or the plain-wall option, choose dimensions, and adjust zoom and horizontal/vertical position. Previews update automatically before exporting PNG/JPG or a 4 × 6 inch PDF sheet at 300-DPI sizing. Print the PDF at 100% / actual size. Framing guides are not exported. Changing framing or colour regenerates the preview; export buttons wait until it is ready.
 
 Dimension templates and framing guides do not certify compliance. Verify current requirements with the issuing authority. Enhancement is off by default. Aadhaar enrolment uses a live photograph. Review fine hair and edge quality after AI processing.
 
@@ -46,3 +46,7 @@ Pushes to `main` run the GitHub Pages workflow. It checks types, unit tests, pro
 ## Test limits
 
 Browser coverage exercises all 134 tools with sample input or, for the four local text AI tools, their empty-input validation. Model inference is network- and device-dependent and is checked separately. Print dialogs, official passport acceptance, every possible file format, and every browser/device are not guaranteed by automated checks.
+
+## Workbench visual identity
+
+The interface uses self-hosted Syne and Space Grotesk fonts, warm paper, cobalt, orange and lime, layered tool artwork, tactile hover states and a moving type ribbon. Reduced-motion settings disable animation and pointer tilt. All tools, daily pages and policies share the design. Font, model, runtime and browser-test image licence notices ship beside those assets.

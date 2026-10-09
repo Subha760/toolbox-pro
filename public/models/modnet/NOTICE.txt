@@ -1,0 +1,5 @@
+MODNet: Trimap-Free Portrait Matting in Real Time
+Copyright 2020 Zhanghan Ke, Kaican Li and Yuk Hei Chan. Apache-2.0.
+ONNX conversion by Xenova: https://huggingface.co/Xenova/modnet
+Original: https://github.com/ZHKKKe/MODNet
+Model: fp32, 25,888,640 bytes. Used locally for portrait matting.

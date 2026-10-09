@@ -1,7 +1,7 @@
 export const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
 
 export function validatePhoto(file) {
-  if (!file || !['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+  if (!file || !(['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || ((!file.type || file.type === 'application/octet-stream') && /\.(jpe?g|png|webp)$/i.test(file.name || '')))) {
     throw new Error('Choose a JPG, PNG or WebP photo.');
   }
   if (!file.size || file.size > MAX_PHOTO_BYTES) throw new Error('Choose a photo smaller than 10 MB.');

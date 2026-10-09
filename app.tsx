@@ -3403,34 +3403,36 @@ const INDIA_PHOTO_PRESETS = {
 };
 
 function PassportTool() {
-  const [file, setFile] = useState<File | null>(null);
-  const [sourceUrl, setSourceUrl] = useState("");
-  const [cutoutUrl, setCutoutUrl] = useState("");
-  const [background, setBackground] = useState("#FFFFFF");
-  const [format, setFormat] = useState("passport");
-  const [customWidth, setCustomWidth] = useState(413);
-  const [customHeight, setCustomHeight] = useState(531);
-  const [zoom, setZoom] = useState(100);
-  const [vertical, setVertical] = useState(50);
-  const [enhance, setEnhance] = useState(false);
-  const [horizontal, setHorizontal] = useState(50);
-  const [guides, setGuides] = useState(true);
-  const serviceStatus =
-    "Free on-device AI. Your photo stays in this browser. Model files download on first use.";
-  const pendingRequest = useRef<AbortController | null>(null);
-  const photoUrls = useRef({ source: "", cutout: "" });
-  const [preview, setPreview] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [status, setStatus] = useState("Upload a clear front-facing portrait.");
-
-  useEffect(() => {
-    return () => {
+  const [file, setFile] = useState<File | null>(null),
+    [sourceUrl, setSourceUrl] = useState(""),
+    [cutoutUrl, setCutoutUrl] = useState("");
+  const [background, setBackground] = useState("#FFFFFF"),
+    [format, setFormat] = useState("passport"),
+    [customWidth, setCustomWidth] = useState(413),
+    [customHeight, setCustomHeight] = useState(531);
+  const [zoom, setZoom] = useState(100),
+    [horizontal, setHorizontal] = useState(50),
+    [vertical, setVertical] = useState(50),
+    [enhance, setEnhance] = useState(false),
+    [guides, setGuides] = useState(true);
+  const [preview, setPreview] = useState(""),
+    [busy, setBusy] = useState(false),
+    [generating, setGenerating] = useState(false),
+    [status, setStatus] = useState("Upload a portrait to start."),
+    [error, setError] = useState(""),
+    [revision, setRevision] = useState(0);
+  const pendingRequest = useRef<AbortController | null>(null),
+    photoUrls = useRef({ source: "", cutout: "" }),
+    uploadVersion = useRef(0);
+  useEffect(
+    () => () => {
+      uploadVersion.current++;
       pendingRequest.current?.abort();
       URL.revokeObjectURL(photoUrls.current.source);
       URL.revokeObjectURL(photoUrls.current.cutout);
-    };
-  }, []);
-
+    },
+    [],
+  );
   const preset =
     format === "custom"
       ? {
@@ -3445,166 +3447,214 @@ function PassportTool() {
           ),
         }
       : INDIA_PHOTO_PRESETS[format as keyof typeof INDIA_PHOTO_PRESETS];
-
-  useEffect(() => {
-    setPreview("");
-  }, [
-    background,
-    format,
-    customWidth,
-    customHeight,
-    zoom,
-    vertical,
-    horizontal,
-    enhance,
-  ]);
-
-  const selectFile = (next: File | null) => {
-    if (next) {
-      try {
-        validatePhoto(next);
-      } catch (error) {
-        setStatus((error as Error).message);
-        return;
+  const selectFile = async (next: File | null) => {
+    if (!next) return;
+    const version = ++uploadVersion.current;
+    setError("");
+    setStatus("Preparing your portrait…");
+    setBusy(true);
+    let raw = "";
+    try {
+      validatePhoto(next);
+      raw = URL.createObjectURL(next);
+      const image = await loadImage(raw);
+      // Reduce oversized camera photos before segmentation or preview rendering.
+      const scale = Math.min(1, 2048 / Math.max(image.width, image.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(image.width * scale);
+      canvas.height = Math.round(image.height * scale);
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("This browser cannot create a photo canvas.");
+      ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+      const normalized = await canvasToBlob(canvas, "image/png");
+      if (version !== uploadVersion.current) return;
+      const prepared = new File([normalized], "portrait.png", {
+        type: "image/png",
+      });
+      const url = URL.createObjectURL(prepared);
+      URL.revokeObjectURL(photoUrls.current.source);
+      URL.revokeObjectURL(photoUrls.current.cutout);
+      photoUrls.current = { source: url, cutout: "" };
+      setFile(prepared);
+      setSourceUrl(url);
+      setCutoutUrl("");
+      setZoom(100);
+      setVertical(50);
+      setHorizontal(50);
+      setPreview("");
+      setStatus("Portrait ready. Your preview updates automatically.");
+    } catch (e) {
+      if (version === uploadVersion.current) {
+        setError(
+          e instanceof Error
+            ? e.message
+            : "This photo could not open. Try a JPG, PNG or WebP.",
+        );
+        setStatus("Choose a supported portrait to continue.");
       }
+    } finally {
+      if (raw) URL.revokeObjectURL(raw);
+      if (version === uploadVersion.current) setBusy(false);
     }
-    if (sourceUrl) URL.revokeObjectURL(sourceUrl);
-    if (cutoutUrl) URL.revokeObjectURL(cutoutUrl);
-    setZoom(100);
-    setVertical(50);
-    setHorizontal(50);
-    setFile(next);
-    setCutoutUrl("");
-    setPreview("");
-    const url = next ? URL.createObjectURL(next) : "";
-    photoUrls.current = { source: url, cutout: "" };
-    setSourceUrl(url);
-    setStatus(
-      next
-        ? "Photo ready. Remove its background, then create the document photo."
-        : "Upload a clear front-facing portrait.",
-    );
   };
-
+  useEffect(() => {
+    const input = cutoutUrl || sourceUrl;
+    if (!input) {
+      setPreview("");
+      return;
+    }
+    let active = true;
+    setGenerating(true);
+    const timer = setTimeout(async () => {
+      try {
+        const image = await loadImage(input),
+          canvas = document.createElement("canvas");
+        canvas.width = preset.width;
+        canvas.height = preset.height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) throw new Error("Canvas is unavailable.");
+        ctx.imageSmoothingQuality = "high";
+        ctx.fillStyle = background;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        const { dx, dy, drawWidth, drawHeight } = portraitLayout(
+          image.width,
+          image.height,
+          canvas.width,
+          canvas.height,
+          zoom,
+          horizontal,
+          vertical,
+        );
+        ctx.filter = enhance
+          ? "brightness(1.035) contrast(1.07) saturate(1.035)"
+          : "none";
+        ctx.drawImage(image, dx, dy, drawWidth, drawHeight);
+        if (active) {
+          setPreview(canvas.toDataURL("image/png"));
+          setGenerating(false);
+        }
+      } catch (e) {
+        if (active) {
+          setPreview("");
+          setGenerating(false);
+          setError((e as Error).message);
+        }
+      }
+    }, 120);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [
+    sourceUrl,
+    cutoutUrl,
+    background,
+    preset.width,
+    preset.height,
+    zoom,
+    horizontal,
+    vertical,
+    enhance,
+    revision,
+  ]);
+  const useCutout = async (blob: Blob) => {
+    const url = URL.createObjectURL(blob);
+    try {
+      await loadImage(url);
+    } catch {
+      URL.revokeObjectURL(url);
+      throw new Error("The processed image could not open.");
+    }
+    URL.revokeObjectURL(photoUrls.current.cutout);
+    photoUrls.current.cutout = url;
+    setCutoutUrl(url);
+    setStatus("Background removed. Choose a colour and download your photo.");
+  };
   const removeBackground = async () => {
-    if (!file) return setStatus("Please upload a portrait first.");
-    if (busy) return;
+    if (!file || busy) return;
     const controller = new AbortController();
     pendingRequest.current = controller;
-    const timeout = window.setTimeout(() => controller.abort(), 90000);
     setBusy(true);
-    setStatus("AI is removing the background…");
+    setError("");
     try {
       const blob = await localCutout(file, controller.signal, setStatus);
-      const url = URL.createObjectURL(blob);
-      try {
-        await loadImage(url);
-      } catch {
-        URL.revokeObjectURL(url);
-        throw new Error("The AI returned an unreadable image.");
-      }
-      if (controller.signal.aborted) {
-        URL.revokeObjectURL(url);
-        return;
-      }
-      if (cutoutUrl) URL.revokeObjectURL(cutoutUrl);
-      photoUrls.current.cutout = url;
-      setCutoutUrl(url);
-      setPreview("");
-      setStatus(
-        "Background removed with AI. Choose a studio colour and create the photo.",
-      );
-    } catch (error) {
-      setStatus(
+      if (!controller.signal.aborted) await useCutout(blob);
+    } catch (e) {
+      setError(
         controller.signal.aborted
-          ? "Processing stopped or timed out. Your original photo is unchanged."
-          : error instanceof Error
-            ? error.message
-            : "AI could not start. Try another browser or a smaller portrait.",
+          ? "Processing stopped. You can still crop and download your original."
+          : (e as Error).message,
+      );
+      setStatus(
+        "Your original portrait is safe. Retry AI, or use plain-wall removal.",
       );
     } finally {
-      window.clearTimeout(timeout);
       pendingRequest.current = null;
       setBusy(false);
     }
   };
-
-  const build = async () => {
-    const input = cutoutUrl || sourceUrl;
-    if (!input) return setStatus("Please upload a portrait first.");
+  const removePlain = async () => {
+    if (!sourceUrl || busy) return;
     setBusy(true);
+    setError("");
+    setStatus("Removing the edge-connected plain background…");
     try {
-      const image = await loadImage(input);
-      const output = document.createElement("canvas");
-      output.width = preset.width;
-      output.height = preset.height;
-      const context = output.getContext("2d");
-      if (!context) throw new Error("Canvas is unavailable");
-      context.imageSmoothingEnabled = true;
-      context.imageSmoothingQuality = "high";
-      context.fillStyle = background;
-      context.fillRect(0, 0, output.width, output.height);
-      const { dx, dy, drawWidth, drawHeight } = portraitLayout(
-        image.width,
-        image.height,
-        output.width,
-        output.height,
-        zoom,
-        horizontal,
-        vertical,
-      );
-      context.filter = enhance
-        ? "brightness(1.035) contrast(1.07) saturate(1.035)"
-        : "none";
-      context.drawImage(image, dx, dy, drawWidth, drawHeight);
-      context.filter = "none";
-      setPreview(output.toDataURL("image/png"));
+      const image = await loadImage(sourceUrl),
+        scale = Math.min(1, 960 / Math.max(image.width, image.height)),
+        c = document.createElement("canvas");
+      c.width = Math.round(image.width * scale);
+      c.height = Math.round(image.height * scale);
+      const ctx = c.getContext("2d");
+      if (!ctx) throw new Error("Canvas unavailable.");
+      ctx.drawImage(image, 0, 0, c.width, c.height);
+      const pixels = ctx.getImageData(0, 0, c.width, c.height);
+      const { removePlainPixels } =
+        await import("./src/portrait-background.mjs");
+      removePlainPixels(pixels.data, c.width, c.height);
+      ctx.putImageData(pixels, 0, 0);
+      await useCutout(await canvasToBlob(c, "image/png"));
+    } catch (e) {
+      setError((e as Error).message);
       setStatus(
-        `${preset.label} created at ${preset.width} × ${preset.height}px.${image.width < preset.width || image.height < preset.height ? " Source enlarged; use a higher-resolution portrait for a sharper print." : ""}`,
-      );
-    } catch {
-      setStatus(
-        "Could not create the photo. Please try a JPG, PNG or WebP portrait.",
+        "Plain-wall removal could not isolate this portrait. Try AI or keep the original.",
       );
     } finally {
       setBusy(false);
     }
   };
-
-  const downloadJpg = async () => {
+  const ready = Boolean(preview) && !busy && !generating;
+  const downloadPhoto = async (type: "png" | "jpeg") => {
+    if (!ready) return;
     try {
-      const image = await loadImage(preview);
-      const canvas = document.createElement("canvas");
-      canvas.width = image.width;
-      canvas.height = image.height;
-      const context = canvas.getContext("2d");
-      if (!context) return;
-
-      context.fillStyle = "#ffffff";
-      context.fillRect(0, 0, canvas.width, canvas.height);
-      context.drawImage(image, 0, 0);
-
-      const blob = await canvasToBlob(canvas, "image/jpeg", 0.94);
-      downloadBlob(blob, "toolinger-passport.jpg");
-    } catch {
-      setStatus("Unable to export JPG.");
+      const image = await loadImage(preview),
+        c = document.createElement("canvas");
+      c.width = image.width;
+      c.height = image.height;
+      const ctx = c.getContext("2d");
+      if (!ctx) throw new Error("Canvas unavailable.");
+      ctx.drawImage(image, 0, 0);
+      downloadBlob(
+        await canvasToBlob(c, `image/${type}`, 0.94),
+        `toolinger-passport.${type === "jpeg" ? "jpg" : "png"}`,
+      );
+      setStatus("Photo downloaded. Check the saved image before submitting.");
+    } catch (e) {
+      setError((e as Error).message);
     }
   };
-
   const downloadSheet = async () => {
+    if (!ready) return;
     try {
       const { PDFDocument } = await import("pdf-lib");
-      const photo = await loadImage(preview);
-      const layout = sheetLayout(photo.width, photo.height);
+      const photo = await loadImage(preview),
+        layout = sheetLayout(photo.width, photo.height);
       if (!layout.positions.length)
         throw new Error(
-          "This custom photo is too large for a 4 × 6 inch sheet at 300 DPI.",
+          "This custom size is too large for a 4 × 6 inch sheet.",
         );
-      const pdf = await PDFDocument.create();
-      const page = pdf.addPage([288, 432]);
-      const image = await pdf.embedPng(
-        await (await fetch(preview)).arrayBuffer(),
-      );
+      const pdf = await PDFDocument.create(),
+        page = pdf.addPage([288, 432]),
+        image = await pdf.embedPng(await (await fetch(preview)).arrayBuffer());
       for (const { x, y } of layout.positions)
         page.drawImage(image, {
           x: x * 0.24,
@@ -3612,239 +3662,276 @@ function PassportTool() {
           width: photo.width * 0.24,
           height: photo.height * 0.24,
         });
-      const bytes = await pdf.save();
       downloadBlob(
-        new Blob([toArrayBuffer(bytes)], { type: "application/pdf" }),
+        new Blob([toArrayBuffer(await pdf.save())], {
+          type: "application/pdf",
+        }),
         "toolinger-4x6-print.pdf",
       );
       setStatus(
-        `${layout.positions.length} photos on a 4 × 6 inch PDF. Print at actual size / 100%, without fit-to-page.`,
+        `${layout.positions.length} photos on a 4 × 6 inch sheet. Print at actual size / 100%.`,
       );
-    } catch (error) {
-      setStatus(
-        error instanceof Error
-          ? error.message
-          : "Unable to export print sheet.",
-      );
+    } catch (e) {
+      setError((e as Error).message);
     }
   };
-
   return (
-    <ToolPanel>
-      <div
-        onDragOver={(e) => e.preventDefault()}
-        onDrop={(e) => {
-          e.preventDefault();
-          if (!busy) selectFile(e.dataTransfer.files?.[0] ?? null);
-        }}
-        className="rounded-2xl border border-dashed border-violet-300 bg-violet-50 p-4"
-      >
-        <div className="mb-2 font-semibold text-slate-900">
-          1. Upload portrait
-        </div>
-        <p className="mb-3 text-xs text-slate-600">
-          Choose a photo or drop it here. JPG, PNG or WebP, up to 10 MB.
-        </p>
-        <input
-          aria-label="Choose portrait"
-          disabled={busy}
-          className={inputClass}
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          onChange={(event) => selectFile(event.target.files?.[0] ?? null)}
-        />
-        {sourceUrl ? (
-          <img
-            src={sourceUrl}
-            alt="Original portrait"
-            className="mx-auto mt-3 max-h-64 rounded-xl border bg-white object-contain"
-          />
-        ) : null}
+    <div className="tool-panel photo-studio">
+      <div className="studio-topline">
+        <span>PHOTO LAB / 01</span>
+        <span>
+          <i /> Private, on your device
+        </span>
       </div>
-      <div className="rounded-2xl border border-slate-200 bg-white p-4">
-        <div className="mb-2 font-semibold text-slate-900">
-          2. AI background removal
-        </div>
-        <p className="text-sm text-slate-600" role="status">
-          {serviceStatus}
-        </p>
-        <button
-          type="button"
-          disabled={busy || !file}
-          onClick={removeBackground}
-          className={`${primaryBtn} mt-3 disabled:opacity-50`}
-        >
-          {busy ? "Processing…" : "Remove Background with AI"}
-        </button>
-        {busy && pendingRequest.current ? (
-          <button
-            type="button"
-            className={`${secondaryBtn} ml-2`}
-            onClick={() => pendingRequest.current?.abort()}
-          >
-            Cancel
-          </button>
-        ) : null}
-        {cutoutUrl ? (
-          <img
-            src={cutoutUrl}
-            alt="AI background removed"
-            className="mx-auto mt-3 max-h-64 rounded-xl border bg-[linear-gradient(45deg,#eee_25%,transparent_25%),linear-gradient(-45deg,#eee_25%,transparent_25%),linear-gradient(45deg,transparent_75%,#eee_75%),linear-gradient(-45deg,transparent_75%,#eee_75%)] bg-[length:18px_18px] object-contain"
-          />
-        ) : null}
-        <p className="mt-2 text-xs text-slate-500">
-          Lightweight portrait AI • no account or API key. Best for one clearly
-          visible person. Fine hair and complex edges may need correction;
-          review before downloading.
-        </p>
-      </div>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="Photo dimensions">
-          <select
-            className={inputClass}
-            value={format}
-            onChange={(event) => setFormat(event.target.value)}
-          >
-            {Object.entries(INDIA_PHOTO_PRESETS).map(([value, item]) => (
-              <option key={value} value={value}>
-                {item.label}
-              </option>
-            ))}
-            <option value="custom">Custom pixel size</option>
-          </select>
-        </Field>
-        <Field label="Studio background">
-          <div
-            className="flex h-12 overflow-hidden rounded-xl border border-slate-300"
-            role="group"
-            aria-label="Studio background colours"
-          >
-            {[
-              { name: "White", color: "#FFFFFF" },
-              { name: "Navy blue", color: "#163A70" },
-              { name: "Red", color: "#B91C1C" },
-            ].map(({ name, color }) => (
-              <button
-                key={color}
-                type="button"
-                aria-label={name}
-                aria-pressed={background === color}
-                onClick={() => setBackground(color)}
-                className={`flex-1 border-4 ${background === color ? "border-violet-500" : "border-transparent"}`}
-                style={{ backgroundColor: color }}
+      <div className="studio-grid">
+        <div className="studio-controls">
+          <section className="studio-step">
+            <div className="step-heading">
+              <span>01</span>
+              <h2>Your portrait</h2>
+            </div>
+            <label
+              className={`studio-upload ${sourceUrl ? "has-photo" : ""}`}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                e.preventDefault();
+                if (!busy) void selectFile(e.dataTransfer.files?.[0] ?? null);
+              }}
+            >
+              {sourceUrl ? (
+                <img src={sourceUrl} alt="Original portrait" />
+              ) : (
+                <Icon name="image" size={40} />
+              )}
+              <strong>
+                {sourceUrl ? "Change your photo" : "Drop a portrait here"}
+              </strong>
+              <span>or tap to browse · JPG, PNG, WebP · max 10 MB</span>
+              <input
+                aria-label="Choose portrait"
+                disabled={busy}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={(e) => void selectFile(e.target.files?.[0] ?? null)}
               />
-            ))}
-          </div>
-        </Field>
-      </div>
-      {format === "custom" ? (
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Width (px)">
-            <input
-              className={inputClass}
-              type="number"
-              min="100"
-              max="4000"
-              value={customWidth}
-              onChange={(e) => setCustomWidth(Number(e.target.value))}
-            />
-          </Field>
-          <Field label="Height (px)">
-            <input
-              className={inputClass}
-              type="number"
-              min="100"
-              max="4000"
-              value={customHeight}
-              onChange={(e) => setCustomHeight(Number(e.target.value))}
-            />
-          </Field>
-        </div>
-      ) : null}
-      <div className="grid gap-3 sm:grid-cols-2">
-        <Field label={`Zoom — ${zoom}%`}>
-          <input
-            className="w-full accent-violet-600"
-            type="range"
-            min="100"
-            max="180"
-            value={zoom}
-            onChange={(e) => setZoom(Number(e.target.value))}
-          />
-        </Field>
-        <Field label="Vertical position">
-          <input
-            className="w-full accent-violet-600"
-            type="range"
-            min="0"
-            max="100"
-            value={vertical}
-            onChange={(e) => setVertical(Number(e.target.value))}
-          />
-        </Field>
-      </div>
-      <Field label="Custom background colour">
-        <input
-          type="color"
-          value={background}
-          onChange={(e) => setBackground(e.target.value)}
-          className="h-11 w-full rounded-lg"
-        />
-      </Field>
-      <Field label="Horizontal position">
-        <input
-          className="w-full accent-violet-600"
-          type="range"
-          min="0"
-          max="100"
-          value={horizontal}
-          onChange={(e) => setHorizontal(Number(e.target.value))}
-        />
-      </Field>
-      <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
-        <input
-          type="checkbox"
-          checked={enhance}
-          onChange={(e) => setEnhance(e.target.checked)}
-          className="h-5 w-5 accent-violet-600"
-        />{" "}
-        Auto-enhance brightness, colour and contrast
-      </label>
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          disabled={busy || !file}
-          onClick={build}
-          className={`${primaryBtn} disabled:opacity-50`}
-        >
-          Create Studio Photo
-        </button>
-      </div>
-      <div className={resultBox} role="status" aria-live="polite">
-        {status}
-      </div>
-      <p className="text-sm text-slate-600">
-        Sizes are templates, not approval checks. Confirm dimensions, background
-        and digital-editing rules with your issuing authority. Aadhaar enrolment
-        requires a live photo. Keep enhancement off for official submissions.
-      </p>
-      {sourceUrl && !cutoutUrl ? (
-        <p className="text-sm text-slate-600">
-          Background colours only replace transparent areas after removal; your
-          original background stays visible until then.
-        </p>
-      ) : null}
-      {preview ? (
-        <div className="space-y-3">
-          <div className="portrait-preview">
-            <img src={preview} alt="Passport preview" />
-            {guides ? (
-              <div className="portrait-guides" aria-hidden="true">
-                <span />
+            </label>
+          </section>
+          <section className="studio-step">
+            <div className="step-heading">
+              <span>02</span>
+              <h2>Background</h2>
+              <small>Optional</small>
+            </div>
+            <div className="studio-actions">
+              <button
+                className="studio-primary"
+                disabled={busy || !file}
+                onClick={removeBackground}
+              >
+                {busy && pendingRequest.current
+                  ? "Processing…"
+                  : "Remove Background with AI"}
+                <Icon name="spark" size={16} />
+              </button>
+              <button
+                className="studio-secondary"
+                disabled={busy || !file}
+                onClick={removePlain}
+              >
+                Remove plain background
+              </button>
+            </div>
+            <p className="studio-hint">
+              AI works best with one well-lit person. Plain removal is for
+              evenly lit, solid-colour walls.
+            </p>
+            {busy && pendingRequest.current ? (
+              <button
+                className="studio-link"
+                onClick={() => pendingRequest.current?.abort()}
+              >
+                Cancel processing
+              </button>
+            ) : null}
+            {cutoutUrl ? (
+              <>
+                <img
+                  src={cutoutUrl}
+                  alt="AI background removed"
+                  className="studio-cutout"
+                />
+                <button
+                  className="studio-link"
+                  disabled={busy}
+                  onClick={() => {
+                    URL.revokeObjectURL(photoUrls.current.cutout);
+                    photoUrls.current.cutout = "";
+                    setCutoutUrl("");
+                    setStatus("Using the original background.");
+                  }}
+                >
+                  Use original photo
+                </button>
+              </>
+            ) : null}
+            <div
+              className="studio-swatches"
+              role="group"
+              aria-label="Studio background colours"
+            >
+              {[
+                { name: "White", color: "#FFFFFF" },
+                { name: "Navy blue", color: "#163A70" },
+                { name: "Red", color: "#B91C1C" },
+                { name: "Soft grey", color: "#E5E7EB" },
+              ].map((x) => (
+                <button
+                  key={x.name}
+                  aria-label={x.name}
+                  aria-pressed={background === x.color}
+                  style={{ background: x.color }}
+                  onClick={() => setBackground(x.color)}
+                >
+                  <span>{background === x.color ? "✓" : ""}</span>
+                </button>
+              ))}
+              <Field label="Custom background colour">
+                <input
+                  type="color"
+                  value={background}
+                  onChange={(e) => setBackground(e.target.value)}
+                />
+              </Field>
+            </div>
+            {!cutoutUrl ? (
+              <p className="studio-hint">
+                Remove the background first to apply a new colour. Cropping and
+                downloads work with the original too.
+              </p>
+            ) : null}
+          </section>
+          <section className="studio-step">
+            <div className="step-heading">
+              <span>03</span>
+              <h2>Size & framing</h2>
+            </div>
+            <Field label="Photo dimensions">
+              <select
+                value={format}
+                onChange={(e) => setFormat(e.target.value)}
+              >
+                {Object.entries(INDIA_PHOTO_PRESETS).map(([id, x]) => (
+                  <option key={id} value={id}>
+                    {x.label}
+                  </option>
+                ))}
+                <option value="custom">Custom pixel size</option>
+              </select>
+            </Field>
+            {format === "custom" ? (
+              <div className="studio-two">
+                <Field label="Width (px)">
+                  <input
+                    type="number"
+                    min="100"
+                    max="4000"
+                    value={customWidth}
+                    onChange={(e) => setCustomWidth(Number(e.target.value))}
+                  />
+                </Field>
+                <Field label="Height (px)">
+                  <input
+                    type="number"
+                    min="100"
+                    max="4000"
+                    value={customHeight}
+                    onChange={(e) => setCustomHeight(Number(e.target.value))}
+                  />
+                </Field>
               </div>
             ) : null}
+            <Field label={`Zoom — ${zoom}%`}>
+              <input
+                type="range"
+                min="100"
+                max="180"
+                value={zoom}
+                onChange={(e) => setZoom(Number(e.target.value))}
+              />
+            </Field>
+            <Field label="Horizontal position">
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={horizontal}
+                onChange={(e) => setHorizontal(Number(e.target.value))}
+              />
+            </Field>
+            <Field label="Vertical position">
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={vertical}
+                onChange={(e) => setVertical(Number(e.target.value))}
+              />
+            </Field>
+            <label className="studio-check">
+              <input
+                type="checkbox"
+                checked={enhance}
+                onChange={(e) => setEnhance(e.target.checked)}
+              />{" "}
+              Auto-enhance brightness, colour and contrast
+            </label>
+            <button
+              className="studio-secondary"
+              disabled={busy || !file}
+              onClick={() => setRevision((x) => x + 1)}
+            >
+              Create Studio Photo
+            </button>
+          </section>
+        </div>
+        <aside className="studio-output">
+          <div className="studio-preview-header">
+            <span>LIVE PREVIEW</span>
+            <span>
+              {generating
+                ? "Updating…"
+                : preview
+                  ? "Ready to export"
+                  : "Waiting for your photo"}
+            </span>
           </div>
-          <label className="flex items-center gap-2 text-sm">
+          <div className="studio-preview-stage">
+            <div
+              className="portrait-preview"
+              style={{ aspectRatio: `${preset.width}/${preset.height}` }}
+            >
+              {preview ? (
+                <img src={preview} alt="Passport preview" />
+              ) : (
+                <div className="studio-placeholder">
+                  <svg viewBox="0 0 160 200" aria-hidden="true">
+                    <circle cx="80" cy="65" r="32" />
+                    <path d="M25 184v-27c0-38 110-38 110 0v27" />
+                  </svg>
+                  <span>Your photo goes here</span>
+                </div>
+              )}
+              {guides && preview ? (
+                <div className="portrait-guides" aria-hidden="true">
+                  <span />
+                </div>
+              ) : null}
+            </div>
+            <span className="studio-size">
+              {preset.width} × {preset.height} px · 300 DPI print sizing
+            </span>
+          </div>
+          <label className="studio-check">
             <input
               type="checkbox"
               checked={guides}
@@ -3852,36 +3939,45 @@ function PassportTool() {
             />{" "}
             Show framing guides (excluded from downloads)
           </label>
-          <div className="flex flex-wrap gap-2">
+          <div className="studio-export">
             <button
-              type="button"
-              className={secondaryBtn}
-              onClick={async () => {
-                const response = await fetch(preview);
-                const blob = await response.blob();
-                downloadBlob(blob, "toolinger-passport.png");
-              }}
+              className="studio-primary"
+              disabled={!ready}
+              onClick={() => void downloadPhoto("jpeg")}
+            >
+              Download JPG <Icon name="arrow" size={16} />
+            </button>
+            <button
+              className="studio-secondary"
+              disabled={!ready}
+              onClick={() => void downloadPhoto("png")}
             >
               Download PNG
             </button>
             <button
-              type="button"
-              className={secondaryBtn}
+              className="studio-secondary studio-print"
+              disabled={!ready}
               onClick={downloadSheet}
             >
               Download 4 × 6 print PDF
             </button>
-            <button
-              type="button"
-              className={secondaryBtn}
-              onClick={downloadJpg}
-            >
-              Download JPG
-            </button>
           </div>
-        </div>
-      ) : null}
-    </ToolPanel>
+          <p className="studio-status" role="status" aria-live="polite">
+            {status}
+          </p>
+          {error ? (
+            <p className="studio-error" role="alert">
+              {error}
+            </p>
+          ) : null}
+          <p className="studio-hint">
+            Check your issuing authority’s current dimensions and editing rules.
+            Templates are not approval checks. Aadhaar enrolment requires a live
+            photo.
+          </p>
+        </aside>
+      </div>
+    </div>
   );
 }
 
@@ -4510,7 +4606,7 @@ function App() {
     }
   };
   const card = (tool: ToolConfig) => (
-    <article className="catalog-card" key={tool.id}>
+    <article className={`catalog-card card-${tool.category}`} key={tool.id}>
       <a className="card-open" href={routeHref(`tools/${tool.id}/`)}>
         <span className={`tool-icon category-${tool.category}`}>
           <Icon name={CATEGORY_ICONS[tool.category] ?? "spark"} size={23} />
@@ -4857,23 +4953,23 @@ function App() {
             <section className="home-hero page-width">
               <div className="hero-copy-new">
                 <span className="hero-pill">
-                  <span /> YOUR EVERYDAY COMPANION
+                  <span /> THE EVERYDAY TOOLKIT / VOL. 01
                 </span>
                 <h1>
-                  Less busywork.
+                  Small tasks.
                   <br />
-                  <span>More living.</span>
+                  <span>Big possibilities.</span>
                 </h1>
                 <p>
-                  Tools for your files, plans and daily decisions. One useful
-                  place to get things done and keep life moving.
+                  Make, fix, convert. Plan a little better. A collection of
+                  useful tools for whatever your day throws at you.
                 </p>
                 <div className="hero-buttons">
-                  <a className="site-primary" href={routeHref("daily/")}>
-                    Open your daily space <Icon name="arrow" size={18} />
+                  <a className="site-primary" href={routeHref("tools/")}>
+                    Find your next tool <Icon name="arrow" size={18} />
                   </a>
-                  <a className="hero-secondary" href={routeHref("tools/")}>
-                    Browse all tools →
+                  <a className="hero-secondary" href={routeHref("daily/")}>
+                    Your daily space ↗
                   </a>
                 </div>
                 <div className="hero-small-stats">
@@ -4882,45 +4978,117 @@ function App() {
                   <span>Free. No account.</span>
                 </div>
               </div>
-              <div className="home-day-card">
-                <div className="day-card-top">
-                  <span className="eyeline">A LITTLE STRUCTURE</span>
-                  <span>Today</span>
+              <div
+                className="workbench-art"
+                onPointerMove={(e) => {
+                  const r = e.currentTarget.getBoundingClientRect();
+                  e.currentTarget.style.setProperty(
+                    "--tilt-x",
+                    `${((e.clientX - r.left - r.width / 2) / r.width) * 8}deg`,
+                  );
+                  e.currentTarget.style.setProperty(
+                    "--tilt-y",
+                    `${(-(e.clientY - r.top - r.height / 2) / r.height) * 8}deg`,
+                  );
+                }}
+                onPointerLeave={(e) => {
+                  e.currentTarget.style.setProperty("--tilt-x", "0deg");
+                  e.currentTarget.style.setProperty("--tilt-y", "0deg");
+                }}
+              >
+                <div className="art-corner">TOOLS FOR THE WAY YOU LIVE</div>
+                <div className="art-background" aria-hidden="true">
+                  <div className="art-orbit" />
+                  <div className="art-grid" />
                 </div>
-                <h2>Make room for a better day.</h2>
-                <a href={routeHref("tools/daily-planner/")}>
-                  <span className="day-check">✓</span>
-                  <span>
-                    Plan what matters
-                    <small>Tasks, priorities & deadlines</small>
-                  </span>
-                  <Icon name="arrow" size={18} />
-                </a>
-                <a href={routeHref("tools/focus-timer/")}>
-                  <span className="day-check">25</span>
-                  <span>
-                    Find your focus<small>One task. One session.</small>
-                  </span>
-                  <Icon name="arrow" size={18} />
-                </a>
-                <a href={routeHref("tools/expense-tracker/")}>
-                  <span className="day-check">₹</span>
-                  <span>
-                    See where it goes<small>Expenses & monthly budgets</small>
-                  </span>
-                  <Icon name="arrow" size={18} />
-                </a>
-                <div className="day-card-note">
-                  <Icon name="shield" size={16} />
-                  Your plans stay on your device.
+                <div className="art-stage">
+                  <a
+                    className="art-tool art-photo"
+                    href={routeHref("tools/passport-photo-maker/")}
+                    aria-label="Open passport photo studio"
+                  >
+                    <span>PHOTO LAB</span>
+                    <svg viewBox="0 0 180 180" aria-hidden="true">
+                      <rect x="34" y="19" width="112" height="140" rx="2" />
+                      <circle cx="90" cy="68" r="24" />
+                      <path d="M55 139v-18c0-30 70-30 70 0v18M17 40V10h30M133 10h30v30M163 138v30h-30M47 168H17v-30" />
+                    </svg>
+                    <div>
+                      Picture perfect.
+                      <Icon name="arrow" size={22} />
+                    </div>
+                  </a>
+                  <a
+                    className="art-tool art-planner"
+                    href={routeHref("tools/daily-planner/")}
+                    aria-label="Open daily planner"
+                  >
+                    <span>MAKE A LITTLE PLAN</span>
+                    <div className="art-todo">
+                      <i>✓</i>
+                      <b>One thing at a time.</b>
+                      <i>✓</i>
+                      <b>A little less chaos.</b>
+                      <i />
+                      <b>More room for you.</b>
+                    </div>
+                    <div>
+                      Today, sorted.
+                      <Icon name="arrow" size={20} />
+                    </div>
+                  </a>
+                  <a
+                    className="art-tool art-files"
+                    href={routeHref("tools/merge-pdf/")}
+                    aria-label="Open PDF tools"
+                  >
+                    <span>FILE SOMETHING GOOD</span>
+                    <Icon name="document" size={58} />
+                    <div>
+                      PDF, meet possibility.
+                      <Icon name="arrow" size={20} />
+                    </div>
+                  </a>
+                  <div className="art-stamp" aria-hidden="true">
+                    <span>134</span>
+                    <small>
+                      USEFUL
+                      <br />
+                      TOOLS
+                    </small>
+                  </div>
+                  <a
+                    className="art-launch"
+                    href={routeHref("tools/")}
+                    aria-label="Explore all tools"
+                  >
+                    <Icon name="arrow" size={32} />
+                  </a>
+                </div>
+                <div className="art-caption">
+                  <span>NO INSTALL. NO ACCOUNT.</span>
+                  <span>JUST GET IT DONE. ↗</span>
                 </div>
               </div>
             </section>
+            <div
+              className="tool-ticker"
+              aria-label="Create, convert, organise and get on with your day"
+            >
+              <div>
+                {[0, 1].map((n) => (
+                  <span key={n} aria-hidden={n === 1}>
+                    CREATE <i>✳</i> CONVERT <i>✳</i> ORGANISE <i>✳</i> GET ON
+                    WITH YOUR DAY <i>✳</i>
+                  </span>
+                ))}
+              </div>
+            </div>
             <section className="home-section page-width">
               <div className="section-heading">
                 <div>
-                  <span className="eyeline">START SOMEWHERE SIMPLE</span>
-                  <h2>A shortcut for your next task.</h2>
+                  <span className="eyeline">GOOD TO HAVE AROUND</span>
+                  <h2>Meet your new shortcuts.</h2>
                 </div>
                 <a className="text-link" href={routeHref("tools/")}>
                   See every tool →
@@ -4942,8 +5110,8 @@ function App() {
             <section className="home-section page-width">
               <div className="section-heading">
                 <div>
-                  <span className="eyeline">PICK YOUR SPACE</span>
-                  <h2>A place for every kind of task.</h2>
+                  <span className="eyeline">WHAT ARE WE DOING TODAY?</span>
+                  <h2>Pick a lane. Make it happen.</h2>
                 </div>
               </div>
               {categories}
@@ -4951,8 +5119,8 @@ function App() {
             <section className="home-section page-width">
               <div className="section-heading">
                 <div>
-                  <span className="eyeline">HELP ALONG THE WAY</span>
-                  <h2>Useful tools. Clear guidance.</h2>
+                  <span className="eyeline">A LITTLE KNOW-HOW</span>
+                  <h2>Good tools. Better ideas.</h2>
                 </div>
                 <a className="text-link" href={routeHref("guides/")}>
                   All guides →

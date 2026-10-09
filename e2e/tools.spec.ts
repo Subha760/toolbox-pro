@@ -42,7 +42,7 @@ async function go(page: Page, id: string) {
   await page.goto(`tools/${id}/`);
   await expect(page.getByTestId("tool-content")).toBeVisible();
 }
-for (const tool of tools.filter(t=>t.engine!=="lifestyle"))
+for (const tool of tools.filter((t) => t.engine !== "lifestyle"))
   test(`${tool.id}: user workflow`, async ({ page }) => {
     const errors: string[] = [];
     page.on("pageerror", (e) => errors.push(e.message));
@@ -54,20 +54,21 @@ for (const tool of tools.filter(t=>t.engine!=="lifestyle"))
     switch (tool.engine) {
       case "image": {
         if (tool.mode !== "quote")
-          await panel
-            .locator("input[type=file]")
-            .setInputFiles({
-              name: "sample.png",
-              mimeType: "image/png",
-              buffer: await imageFixture(page),
-            });
+          await panel.locator("input[type=file]").setInputFiles({
+            name: "sample.png",
+            mimeType: "image/png",
+            buffer: await imageFixture(page),
+          });
         if (["metadata", "color-picker", "base64"].includes(tool.mode!)) {
           await run.click();
           await expect(panel).not.toContainText("Unable to process");
           if (tool.mode === "color-picker") {
             await panel.locator("canvas").click({ position: { x: 30, y: 30 } });
             await expect(panel).toContainText("Selected color:");
-          } else await expect(panel).toContainText(tool.mode === "base64" ? "data:image/png;base64," : "320");
+          } else
+            await expect(panel).toContainText(
+              tool.mode === "base64" ? "data:image/png;base64," : "320",
+            );
         } else {
           const download = page.waitForEvent("download");
           await run.click();
@@ -94,13 +95,11 @@ for (const tool of tools.filter(t=>t.engine!=="lifestyle"))
             .locator("textarea")
             .fill("Hello Toolinger.\nThis is a sample PDF.");
         else
-          await panel
-            .locator("input[type=file]")
-            .setInputFiles({
-              name: "sample.pdf",
-              mimeType: "application/pdf",
-              buffer: await pdfFixture(),
-            });
+          await panel.locator("input[type=file]").setInputFiles({
+            name: "sample.pdf",
+            mimeType: "application/pdf",
+            buffer: await pdfFixture(),
+          });
         if (["metadata", "preview"].includes(tool.mode!)) {
           await run.click();
           await expect(panel).toContainText(
@@ -126,13 +125,11 @@ for (const tool of tools.filter(t=>t.engine!=="lifestyle"))
         break;
       }
       case "passport": {
-        await panel
-          .locator("input[type=file]")
-          .setInputFiles({
-            name: "portrait.png",
-            mimeType: "image/png",
-            buffer: await imageFixture(page),
-          });
+        await panel.locator("input[type=file]").setInputFiles({
+          name: "portrait.png",
+          mimeType: "image/png",
+          buffer: await imageFixture(page),
+        });
         await panel
           .getByRole("button", { name: "Create Studio Photo", exact: true })
           .click();
@@ -152,10 +149,10 @@ for (const tool of tools.filter(t=>t.engine!=="lifestyle"))
         const pdf = await PDFDocument.load(readFileSync((await d.path())!));
         expect(pdf.getPage(0).getSize()).toEqual({ width: 288, height: 432 });
         await panel.getByLabel("Horizontal position").fill("80");
-        await expect(preview).toHaveCount(0);
+        await expect(preview).toBeVisible();
         await expect(
-          panel.getByRole("button", { name: "Download JPG" }),
-        ).toHaveCount(0);
+          panel.getByRole("button", { name: "Download JPG", exact: true }),
+        ).toBeEnabled();
         break;
       }
       case "text-transform": {
@@ -349,7 +346,8 @@ test("search, saved tools, themes, policy dialogs and mobile layout", async ({
     .fill("nonsense-no-tool");
   await expect(page.locator(".empty-state")).toContainText("No tools found.");
   await page
-    .getByRole("link", { name: "Privacy policy", exact: true }).first()
+    .getByRole("link", { name: "Privacy policy", exact: true })
+    .first()
     .click();
   await expect(page.locator("main")).toContainText("Updated 8 October 2026");
   await page.setViewportSize({ width: 390, height: 844 });
@@ -384,13 +382,11 @@ test("safe markdown links and PDF page errors", async ({ page }) => {
   await page.locator(".tool-panel textarea").fill("[bad](javascript:alert(1))");
   await expect(page.locator(".tool-panel a")).toHaveCount(0);
   await go(page, "rearrange-pdf-pages");
-  await page
-    .locator("input[type=file]")
-    .setInputFiles({
-      name: "sample.pdf",
-      mimeType: "application/pdf",
-      buffer: await pdfFixture(),
-    });
+  await page.locator("input[type=file]").setInputFiles({
+    name: "sample.pdf",
+    mimeType: "application/pdf",
+    buffer: await pdfFixture(),
+  });
   await page.getByPlaceholder("New order: 3,1,2").fill("5,1");
   await page.getByRole("button", { name: "Run Tool", exact: true }).click();
   await expect(page.getByTestId("tool-content")).toContainText(
@@ -398,33 +394,64 @@ test("safe markdown links and PDF page errors", async ({ page }) => {
   );
 });
 
-test('examples, reset, mobile photo workspace and manifest assets', async ({page, request}) => {
-  await go(page, 'base64-decoder');
-  await page.getByRole('button', {name:'Try an example'}).click();
-  await page.getByRole('button', {name:'Run Tool', exact:true}).click();
-  await expect(page.locator('.tool-panel textarea[readonly]')).toHaveValue('Hello, Toolinger!');
-  await page.getByRole('button', {name:'Reset', exact:true}).click();
-  await expect(page.locator('.tool-panel textarea:not([readonly])')).toHaveValue('');
-  await page.setViewportSize({width:390,height:844});
-  await go(page, 'passport-photo-maker');
-  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
-  await page.getByLabel('Choose portrait').setInputFiles({name:'portrait.png',mimeType:'image/png',buffer:await imageFixture(page)});
-  await page.getByRole('button', {name:'Create Studio Photo', exact:true}).click();
-  await expect(page.getByAltText('Passport preview')).toBeVisible();
-  const manifest = await request.get('manifest.webmanifest');
+test("examples, reset, mobile photo workspace and manifest assets", async ({
+  page,
+  request,
+}) => {
+  await go(page, "base64-decoder");
+  await page.getByRole("button", { name: "Try an example" }).click();
+  await page.getByRole("button", { name: "Run Tool", exact: true }).click();
+  await expect(page.locator(".tool-panel textarea[readonly]")).toHaveValue(
+    "Hello, Toolinger!",
+  );
+  await page.getByRole("button", { name: "Reset", exact: true }).click();
+  await expect(
+    page.locator(".tool-panel textarea:not([readonly])"),
+  ).toHaveValue("");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await go(page, "passport-photo-maker");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
+    390,
+  );
+  await page
+    .getByLabel("Choose portrait")
+    .setInputFiles({
+      name: "portrait.png",
+      mimeType: "image/png",
+      buffer: await imageFixture(page),
+    });
+  await page
+    .getByRole("button", { name: "Create Studio Photo", exact: true })
+    .click();
+  await expect(page.getByAltText("Passport preview")).toBeVisible();
+  const manifest = await request.get("manifest.webmanifest");
   expect(manifest.ok()).toBeTruthy();
   const body = await manifest.json();
-  expect(body.start_url).toBe('.');
+  expect(body.start_url).toBe(".");
   expect((await request.get(body.icons[0].src)).ok()).toBeTruthy();
 });
 
-test('skip link preserves the tool and copy failures give useful feedback', async ({page})=> {
-  await go(page,'word-counter');
-  await page.keyboard.press('Tab');
-  await page.getByRole('link',{name:'Skip to content'}).click();
-  await expect(page.locator('.workspace-title h1')).toHaveText('Word Counter');
-  await expect(page.locator('#main-content')).toBeFocused();
-  await page.evaluate(()=>{Object.defineProperty(navigator,'clipboard',{value:{writeText:async()=>{throw new Error('denied');}}, configurable:true});document.execCommand=()=>false;});
-  await page.getByRole('button',{name:'Share link'}).click();
-  await expect(page.getByRole('status')).toHaveText('Select the address bar to copy this link');
+test("skip link preserves the tool and copy failures give useful feedback", async ({
+  page,
+}) => {
+  await go(page, "word-counter");
+  await page.keyboard.press("Tab");
+  await page.getByRole("link", { name: "Skip to content" }).click();
+  await expect(page.locator(".workspace-title h1")).toHaveText("Word Counter");
+  await expect(page.locator("#main-content")).toBeFocused();
+  await page.evaluate(() => {
+    Object.defineProperty(navigator, "clipboard", {
+      value: {
+        writeText: async () => {
+          throw new Error("denied");
+        },
+      },
+      configurable: true,
+    });
+    document.execCommand = () => false;
+  });
+  await page.getByRole("button", { name: "Share link" }).click();
+  await expect(page.getByRole("status")).toHaveText(
+    "Select the address bar to copy this link",
+  );
 });
