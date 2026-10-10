@@ -174,7 +174,7 @@ async function api(request, env, url) {
         "SELECT count(*) actions,count(distinct visitor) visitors,sum(kind='open') opens,sum(kind='action') attempts FROM events WHERE created>=datetime('now',?)",
       ).bind(since),
       env.DB.prepare(
-        "SELECT count(*) returning FROM (SELECT visitor FROM events WHERE created>=datetime('now',?) GROUP BY visitor HAVING count(distinct substr(created,1,10))>=2)",
+        "SELECT count(*) returning_count FROM (SELECT visitor FROM events WHERE created>=datetime('now',?) GROUP BY visitor HAVING count(distinct substr(created,1,10))>=2)",
       ).bind(since),
       env.DB.prepare(
         "SELECT substr(created,1,10) day,count(*) events,count(distinct visitor) visitors FROM events WHERE created>=datetime('now',?) GROUP BY day ORDER BY day",
@@ -192,7 +192,7 @@ async function api(request, env, url) {
     const rows = await env.DB.batch(statements);
     return json({
       totals: rows[0].results[0],
-      returning: rows[1].results[0].returning,
+      returning: rows[1].results[0].returning_count,
       daily: rows[2].results,
       tools: rows[3].results,
       visitors: rows[4].results,

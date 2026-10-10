@@ -128,10 +128,10 @@ export default function Admin() {
         </header>
         {error ? (
           <section className="owner-panel">
-            <h2>Owner sign-in required</h2>
+            <h2>Dashboard could not load</h2>
             <p role="alert">{error}</p>
             <a className="owner-primary" href={`${CONTROL_ORIGIN}/admin/`}>
-              Open secure sign-in
+              Check owner sign-in
             </a>
           </section>
         ) : !data ? (

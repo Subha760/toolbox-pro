@@ -1,6 +1,27 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import worker, { authenticate, validateSetting } from "../control/worker.mjs";
+test("dashboard queries execute in SQLite and count returning browsers across dates", () => {
+  const source = readFileSync(new URL("../control/worker.mjs", import.meta.url), "utf8");
+  const schema = readFileSync(new URL("../control/schema.sql", import.meta.url), "utf8");
+  const result = spawnSync("python3", ["-c", `
+import json,re,sqlite3,sys
+source,schema=json.load(sys.stdin)
+db=sqlite3.connect(':memory:')
+db.executescript(schema)
+db.execute("INSERT INTO events(id,visitor,tool,kind,created) VALUES ('a','repeat','qr-code-generator','open',datetime('now','-1 day'))")
+db.execute("INSERT INTO events(id,visitor,tool,kind) VALUES ('b','repeat','qr-code-generator','open')")
+db.execute("INSERT INTO events(id,visitor,tool,kind) VALUES ('c','once','qr-code-generator','open')")
+part=source.split('const statements = [')[1].split('const rows =')[0]
+queries=re.findall(r'prepare\\(\\s*"([^"]+)"',part)
+assert len(queries)==8
+results=[db.execute(q,('-30 days',) if '?' in q else ()).fetchall() for q in queries]
+assert results[1][0][0]==1, results[1]
+`], { input: JSON.stringify([source, schema]), encoding: "utf8" });
+  assert.equal(result.status, 0, result.stderr);
+});
 test("admin rejects missing and forged authentication without reading database", async () => {
   const env = {
     ACCESS_AUD: "private-aud",
