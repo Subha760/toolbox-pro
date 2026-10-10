@@ -128,11 +128,23 @@ export default function Admin() {
         </header>
         {error ? (
           <section className="owner-panel">
-            <h2>Dashboard could not load</h2>
+            <h2>
+              {error.startsWith("Sign in at") ||
+              error.startsWith("Open the secure website")
+                ? "Owner sign-in required"
+                : "Dashboard could not load"}
+            </h2>
             <p role="alert">{error}</p>
-            <a className="owner-primary" href={`${CONTROL_ORIGIN}/admin/`}>
-              Check owner sign-in
-            </a>
+            {error.startsWith("Sign in at") ||
+            error.startsWith("Open the secure website") ? (
+              <a className="owner-primary" href={`${CONTROL_ORIGIN}/admin/`}>
+                Open secure sign-in
+              </a>
+            ) : (
+              <button className="owner-primary" onClick={() => void load()}>
+                Retry dashboard
+              </button>
+            )}
           </section>
         ) : !data ? (
           <p role="status">Loading your workspace…</p>
