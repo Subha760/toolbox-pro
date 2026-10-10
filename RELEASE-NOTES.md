@@ -1,0 +1,3 @@
+Toolinger 4.2.0 adds global quick tool search, connection status, monthly budget planning, fuel cost estimates, and electricity cost estimates. The owner app starts at the branded sign-in page, supports Cloudflare account verification navigation, and uses the corrected dashboard backend.
+
+Downloads: signed public APK and Play AAB, signed owner APK, PNG/SVG logo pack, and store submission documents. Same signing key and application IDs as 4.1.0; version code 40002. Ads remain disabled. These packages are not store-published and still need physical-device testing and developer-account submission.
