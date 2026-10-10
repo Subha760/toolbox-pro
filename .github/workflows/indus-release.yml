@@ -36,8 +36,8 @@ jobs:
             echo 'Add the repository secret INDUS_APP_STORE_API_TOKEN from the Indus Developer Console.' >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
-          if ! curl --fail --silent --show-error 'https://api.github.com/repos/indusappstore/appstore-release/git/ref/tags/v1' --output "$RUNNER_TEMP/indus-action-ref.json"; then
-            echo 'The Marketplace action repository/tag is unavailable. No store upload was attempted. Verify the publisher repository before retrying.' >> "$GITHUB_STEP_SUMMARY"
+          if ! curl --fail --silent --show-error 'https://api.github.com/repos/PhonePe/Indus-Flows/commits/d0b550922eff1366945ffe6137a44609752c6dc4' --output "$RUNNER_TEMP/indus-action-ref.json"; then
+            echo 'The Marketplace action pinned repository revision is unavailable. No store upload was attempted. Verify the publisher repository before retrying.' >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
           echo 'ready=true' >> "$GITHUB_OUTPUT"
@@ -67,7 +67,7 @@ jobs:
           with open(os.environ['GITHUB_ENV'],'a') as out: out.write(f'INDUS_RELEASE_NOTES=Toolinger {tag[1:]} — everyday tools and owner dashboard improvements.\n')
           PY
       - name: Upload signed public app update
-        uses: indusappstore/appstore-release@v1
+        uses: PhonePe/Indus-Flows@d0b550922eff1366945ffe6137a44609752c6dc4 # v1, inspected release
         with:
           file_path: packages/Toolinger-release.apk
           file_type: apk
