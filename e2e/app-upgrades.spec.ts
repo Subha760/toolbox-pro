@@ -1,17 +1,31 @@
 import { test, expect } from "@playwright/test";
-test("quick search works from a tool, handles no results and restores focus", async ({ page }) => {
+test("quick search works from a tool, handles no results and restores focus", async ({
+  page,
+}) => {
   await page.goto("tools/word-counter/");
-  await expect(page.getByRole("button", { name: "Quick tool search" })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Quick tool search" }),
+  ).toBeVisible();
   await page.keyboard.press("Control+k");
-  await expect(page.getByRole("dialog", { name: "What do you need?" })).toBeVisible();
+  await expect(
+    page.getByRole("dialog", { name: "What do you need?" }),
+  ).toBeVisible();
   await page.getByLabel("Find a tool quickly").fill("passport");
-  await expect(page.locator(".quick-results")).toContainText("Passport & ID Photo Maker");
+  await expect(page.locator(".quick-results")).toContainText(
+    "Passport & ID Photo Maker",
+  );
   await page.getByLabel("Find a tool quickly").fill("nonexistent-tool-xyz");
-  await expect(page.locator(".quick-results")).toContainText("No matching tools");
+  await expect(page.locator(".quick-results")).toContainText(
+    "No matching tools",
+  );
   await page.keyboard.press("Escape");
-  await expect(page.getByRole("button", { name: "Quick tool search" })).toBeFocused();
+  await expect(
+    page.getByRole("button", { name: "Quick tool search" }),
+  ).toBeFocused();
 });
-test("everyday cost estimates calculate and reject invalid efficiency", async ({ page }) => {
+test("everyday cost estimates calculate and reject invalid efficiency", async ({
+  page,
+}) => {
   await page.goto("daily/");
   const panel = page.locator(".daily-costs");
   await expect(panel).toContainText("15,000.00");
