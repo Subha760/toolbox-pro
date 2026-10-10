@@ -5266,7 +5266,7 @@ function App() {
                 {route === "contact" ? (
                   <a
                     className="daily-primary"
-                    href="mailto:lootchaser2026@gmail.com"
+                    href="mailto:help@choicematrix.in"
                   >
                     Email support
                   </a>

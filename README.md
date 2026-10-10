@@ -21,7 +21,7 @@ The browser AI dependency includes optional Node CUDA binaries, which are not ne
 
 The directory includes search, category filters, favourite and recent tools, persistent light/dark themes and dedicated `/tools/tool-id/` URLs (legacy hash links still work). Text utilities include optional examples. Switching tools clears unsaved input; Notepad explicitly saves its text on the current device. The Reset control resets the current workspace. Preferences can be cleared from Privacy choices.
 
-Tool processing happens locally. AI downloads libraries and models on first use; the inputs stay in the browser. There are no active advertising or analytics scripts. Policies live in `src/policies.ts`; keep them synchronized with actual features. Support contact: lootchaser2026@gmail.com.
+Tool processing happens locally. AI downloads libraries and models on first use; the inputs stay in the browser. There are no active advertising or analytics scripts. Policies live in `src/policies.ts`; keep them synchronized with actual features. Support contact: help@choicematrix.in.
 
 PDF, QR, formatting and AI libraries load when needed. A service worker provides cached same-origin app assets for repeat visits. The photo studio serves MODNet and its CPU WASM runtime from Toolinger; its first use downloads approximately 40 MB, then caches those files. AI model downloads require internet access and a capable browser.
 

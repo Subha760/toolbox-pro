@@ -26,7 +26,7 @@ Short description: **134 handy tools for photos, PDFs, text, plans and everyday 
 Description: Toolinger brings everyday tools into one workspace. Create ID-photo templates with on-device background removal, resize and convert images, work with PDFs, format text and code, and handle useful calculations. Plan tasks, track habits and water, organise shopping and meals, compare prices, and export a private backup of your daily-life entries. File and text processing runs on your device. AI features may download model files before use. Optional anonymous usage counts require permission. Report problems directly from each tool. Photo templates do not guarantee official acceptance; check the issuing authority's requirements.
 
 Privacy policy: https://tools.choicematrix.in/privacy/
-Support: lootchaser2026@gmail.com
+Support: help@choicematrix.in
 Website: https://tools.choicematrix.in/
 Store icon: `public/app-icons/toolinger-512.png`.
 
