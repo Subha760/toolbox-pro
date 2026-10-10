@@ -28,6 +28,7 @@ import {
   type ToolConfig,
 } from "./src/catalog";
 import { LifestyleTool, DailyHub, MySpace } from "./src/lifestyle";
+import { QuickLaunch, EverydayCosts } from "./src/app-upgrades";
 import { useRoute, navigate, routeHref, assetUrl } from "./src/router";
 import { GUIDES } from "./src/guides";
 import { ConsentControls, AdPlacement } from "./src/advertising";
@@ -4533,16 +4534,6 @@ function App() {
       );
   }, [activeTool?.id]);
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
-        e.preventDefault();
-        searchRef.current?.focus();
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, []);
-  useEffect(() => {
     if (!notice) return;
     const timer = setTimeout(() => setNotice(""), 3500);
     return () => clearTimeout(timer);
@@ -5179,6 +5170,7 @@ function App() {
         ) : route === "daily" ? (
           <section className="content-page page-width">
             <DailyHub />
+            <EverydayCosts />
             <div className="section-heading">
               <div>
                 <span className="eyeline">SMALL TOOLS, DAILY USE</span>
@@ -5561,6 +5553,7 @@ function App() {
         </Dialog>
       ) : null}
       <UsageChoice />
+      <QuickLaunch />
       <ConsentControls />
       {notice ? (
         <div className="site-toast" role="status">

@@ -10,10 +10,12 @@ const config: CapacitorConfig = {
     androidScheme: "https",
     ...(process.env.TOOLINGER_OWNER_APP
       ? {
-          url: "https://tools.choicematrix.in/admin/",
+          url: "https://tools.choicematrix.in/owner/",
           allowNavigation: [
             "tools.choicematrix.in",
             "toolinger-owner.cloudflareaccess.com",
+            "dash.cloudflare.com",
+            "oauth-callbacks.cloudflareaccess.com",
           ],
         }
       : {}),
