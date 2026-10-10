@@ -4977,7 +4977,7 @@ function App() {
                   Jump into a studio, tidy up a document, or make room for your
                   next idea. Everything has its own workspace.
                 </p>
-                <a href={routeHref("categories/")}>Explore categories →</a>
+                <a href={routeHref("tools/")}>Explore categories →</a>
               </div>
               <video
                 poster={assetUrl("media/toolkit-motion-poster.jpg")}

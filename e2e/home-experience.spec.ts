@@ -37,3 +37,18 @@ test("homepage fits small screens and respects reduced motion", async ({
       .evaluate((el) => getComputedStyle(el).animationName),
   ).toBe("none");
 });
+
+test("homepage category action opens the generated directory", async ({
+  page,
+  request,
+}) => {
+  await page.goto("./");
+  const link = page
+    .locator(".motion-preview")
+    .getByRole("link", { name: "Explore categories" });
+  const href = await link.getAttribute("href");
+  expect((await request.get(href!)).status()).toBe(200);
+  await link.click();
+  await expect(page).toHaveURL(/tools\/$/);
+  await expect(page.locator(".category-sidebar")).toBeVisible();
+});

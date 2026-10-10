@@ -1,4 +1,5 @@
 name: Publish signed Android release assets
+# 4.3.0 packages include the verified generated category-directory link.
 on:
   workflow_dispatch:
   push:
