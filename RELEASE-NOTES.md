@@ -3,3 +3,5 @@ Toolinger 4.3.0 introduces a redesigned, searchable homepage, animated 3D-style 
 Public app: io.toolinger.app; version code 40003; target SDK 36. Signed with the existing release certificate. Includes public APK, Play AAB, separate owner APK, logos and store submission files.
 
 Upload the public APK for the first Indus submission. Automatic updates are prepared but require the first listing to be published and the GitHub Indus token/flag configured. Physical Android device verification and store review remain necessary; neither is claimed here.
+
+The homepage category action opens the generated tool directory; its direct destination and navigation are covered by a regression check.
