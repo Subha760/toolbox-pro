@@ -1,4 +1,5 @@
 import React from "react";
+import { StartupExperience } from "./src/startup";
 import { createRoot } from "react-dom/client";
 const App = React.lazy(() => import("./app.tsx"));
 const Admin = React.lazy(() => import("./src/admin.tsx"));
@@ -7,10 +8,18 @@ import "./src/tailwind.css";
 import "./styles.css";
 import "./src/workbench.css";
 import "./src/home-experience.css";
+import "./src/tool-polish.css";
 
 createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <React.Suspense fallback={<p role="status">Opening Toolinger…</p>}>
+    <StartupExperience />
+    <React.Suspense
+      fallback={
+        <div className="startup-loading" role="status">
+          Opening Toolinger…
+        </div>
+      }
+    >
       {ownerRoute ? <Admin /> : <App />}
     </React.Suspense>
   </React.StrictMode>,

@@ -1,14 +1,14 @@
 # Toolinger Android release
 
-Public app ID: `io.toolinger.app`. Version: `4.3.0`, version code `40003`. Target/compile API: 36; minimum API: 24. Capacitor 8, bundled tools/model assets, Android system share sheet for exports, branded icons, no marketing SDKs. Backup of private app data is disabled. Only Internet permission is requested by the app manifest; file upload uses the system picker and exports use the app cache/share sheet.
+Public app ID: `io.toolinger.app`. Version: `4.4.0`, version code `40004`. Target/compile API: 36; minimum API: 24. Capacitor 8, bundled tools/model assets, Android system share sheet for exports, branded icons, no marketing SDKs. Backup of private app data is disabled. Only Internet permission is requested by the app manifest; file upload uses the system picker and exports use the app cache/share sheet.
 
 Owner app ID: `io.toolinger.owner`. It opens https://tools.choicematrix.in/owner/ and requires the same owner-only Cloudflare Access sign-in. Distribute the owner APK privately; it is not the public store listing.
 
 ## Release files
 
-- Signed `Toolinger-4.3.0.apk`: universal APK for device installation or Indus submission.
-- Signed `Toolinger-4.3.0.aab`: Android App Bundle for Google Play submission.
-- Signed `Toolinger-Owner-4.3.0.apk`: private owner dashboard app.
+- Signed `Toolinger-4.4.0.apk`: universal APK for device installation or Indus submission.
+- Signed `Toolinger-4.4.0.aab`: Android App Bundle for Google Play submission.
+- Signed `Toolinger-Owner-4.4.0.apk`: private owner dashboard app.
 - Private signing backup: keystore, alias and passwords. **Never upload this backup to a release, public repository or store listing.** Keep an offline copy. Future updates must preserve the key and app ID, and increment version code.
 
 The GitHub connection could not write Actions secrets (403); the release was built locally. The checked-in workflow produces a test APK and also signs release APK/AAB when these owner-supplied encrypted repository secrets exist:

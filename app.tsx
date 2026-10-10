@@ -28,6 +28,7 @@ import {
   type ToolConfig,
 } from "./src/catalog";
 import { LifestyleTool, DailyHub, MySpace } from "./src/lifestyle";
+import { StartupSoundButton } from "./src/startup";
 import { HomeExperience } from "./src/home-experience";
 import { QuickLaunch, EverydayCosts } from "./src/app-upgrades";
 import { useRoute, navigate, routeHref, assetUrl } from "./src/router";
@@ -4792,7 +4793,12 @@ function App() {
             </nav>
             <div className="workspace-title">
               <div>
-                <span className="eyeline">YOUR WORKSPACE</span>
+                <span className="workspace-tool-identity">
+                  <ToolIcon tool={activeTool} size={24} />
+                  <span className="eyeline">
+                    {CATEGORY_LABELS[activeTool.category]}
+                  </span>
+                </span>
                 <h1>{activeTool.name}</h1>
                 <p>{activeTool.description}</p>
               </div>
@@ -4965,37 +4971,18 @@ function App() {
         ) : route === "" ? (
           <>
             <HomeExperience />
-            <section className="motion-preview page-width">
-              <div>
-                <span className="eyeline">YOUR TOOLKIT, IN MOTION</span>
-                <h2>
-                  Start with a photo.
-                  <br />
-                  Finish with a plan.
-                </h2>
-                <p>
-                  Jump into a studio, tidy up a document, or make room for your
-                  next idea. Everything has its own workspace.
-                </p>
-                <a href={routeHref("tools/")}>Explore categories →</a>
-              </div>
-              <video
-                poster={assetUrl("media/toolkit-motion-poster.jpg")}
-                controls
-                muted
-                loop
-                playsInline
-                preload="none"
-                aria-label="Animated preview of Toolinger’s photo, file and daily-life workspaces"
-              >
-                <source
-                  src={assetUrl("media/toolkit-motion.webm")}
-                  type="video/webm"
-                />
-                Your browser does not support this video. Use the tools above to
-                explore the toolkit.
-              </video>
-            </section>
+            <nav
+              className="home-category-access page-width"
+              aria-label="Explore tool categories"
+            >
+              <span>Made for your everyday</span>
+              <a href={routeHref("categories/image/")}>
+                Photo & image studio ↗
+              </a>
+              <a href={routeHref("categories/pdf/")}>PDF & documents ↗</a>
+              <a href={routeHref("categories/lifestyle/")}>Daily life ↗</a>
+              <a href={routeHref("tools/")}>All categories →</a>
+            </nav>
             <div className="page-width">
               <AdPlacement placement="directory" />
             </div>
@@ -5348,6 +5335,7 @@ function App() {
                 {p.title.replace("Toolinger", "").trim()}
               </a>
             ))}
+            <StartupSoundButton />
             <button onClick={() => setLegalPage("choices")}>
               Privacy choices
             </button>
@@ -5361,7 +5349,7 @@ function App() {
           </nav>
         </div>
         <a
-          href="https://github.com/Subha760/toolbox-pro/releases/download/v4.1.0/Toolinger-4.1.0.apk"
+          href="https://github.com/Subha760/toolbox-pro/releases/download/v4.4.0/Toolinger-4.4.0.apk"
           target="_blank"
           rel="noreferrer"
           className="text-link"

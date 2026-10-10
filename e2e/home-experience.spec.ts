@@ -44,8 +44,8 @@ test("homepage category action opens the generated directory", async ({
 }) => {
   await page.goto("./");
   const link = page
-    .locator(".motion-preview")
-    .getByRole("link", { name: "Explore categories" });
+    .locator(".home-category-access")
+    .getByRole("link", { name: "All categories" });
   const href = await link.getAttribute("href");
   expect((await request.get(href!)).status()).toBe(200);
   await link.click();

@@ -10,7 +10,7 @@ A MORE ORGANIZED DAY
 Plan tasks, track habits and expenses, build shopping lists, plan meals, log water, use a focus timer, compare prices and work towards savings goals. Export and restore a backup of supported daily-life data from My space.
 
 MADE FOR EASY USE
-Browse by category, search instantly, save favourite tools and switch between light and dark themes. A new animated homepage includes a motion pause control and respects reduced-motion preferences.
+Browse by category, search instantly, save favourite tools and switch between light and dark themes. Refined tool workspaces have clearer controls, readable labels and larger touch targets. A brief branded startup animation respects reduced-motion preferences. An optional startup chime can be enabled from the footer and plays after a user interaction.
 
 YOUR DATA, YOUR DEVICE
 File and text processing runs on your device. Saved daily-life entries stay on this device and do not sync automatically. Some AI features need model assets and can take longer on lower-powered devices. Available bundled tools work offline; network features still require a connection. Optional anonymous usage counts require your choice. Problem reports are voluntary. Advertising is currently disabled.
