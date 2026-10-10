@@ -154,7 +154,7 @@ await writeFile(
 );
 await writeFile(
   "dist/robots.txt",
-  `User-agent: *\nAllow: /\nDisallow: /admin/\nDisallow: /api/\nSitemap: ${home}sitemap.xml\n`,
+  `User-agent: *\nAllow: /\nDisallow: /admin/\nDisallow: /owner/\nDisallow: /api/\nSitemap: ${home}sitemap.xml\n`,
 );
 const ads = JSON.parse(await readFile("public/ad-config.json", "utf8"));
 if (ads.enabled) {
