@@ -13,7 +13,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: toolinger-release-assets-v4.2.0
+          ref: toolinger-release-assets-v4.3.0
           path: release-packages
       - name: Verify signed package checksums
         working-directory: release-packages
@@ -29,16 +29,16 @@ jobs:
           from pathlib import Path
           folder=Path('release-packages')
           releases=json.loads(Path(os.environ['RUNNER_TEMP'],'toolinger-releases.json').read_text())
-          current=next((r for r in releases if r['tag_name']=='v4.2.0'),None)
+          current=next((r for r in releases if r['tag_name']=='v4.3.0'),None)
           Path(os.environ['RUNNER_TEMP'],'toolinger-release-id').write_text(str(current['id']) if current else '')
-          body={'tag_name':'v4.2.0','target_commitish':'main','name':'Toolinger 4.2.0 — Quick search and everyday cost planning','body':(folder/'RELEASE-NOTES.md').read_text(),'draft':True,'prerelease':False}
+          body={'tag_name':'v4.3.0','target_commitish':'main','name':'Toolinger 4.3.0 — Motion studio and organized everyday tools','body':(folder/'RELEASE-NOTES.md').read_text(),'draft':True,'prerelease':False}
           Path(os.environ['RUNNER_TEMP'],'toolinger-release-payload.json').write_text(json.dumps(body))
           PY
           release_id=$(cat "$RUNNER_TEMP/toolinger-release-id")
           if [ -z "$release_id" ]; then
             release_id=$(gh api --method POST "repos/$GH_REPO/releases" --input "$RUNNER_TEMP/toolinger-release-payload.json" --jq .id)
           fi
-          for name in Toolinger-4.2.0.apk Toolinger-4.2.0.aab Toolinger-Owner-4.2.0.apk Toolinger-store-submission.zip Toolinger-logos.zip Toolinger-logo.svg Toolinger-logo-512.png SHA256SUMS.txt; do
+          for name in Toolinger-4.3.0.apk Toolinger-4.3.0.aab Toolinger-Owner-4.3.0.apk Toolinger-store-submission.zip Toolinger-logos.zip Toolinger-logo.svg Toolinger-logo-512.png SHA256SUMS.txt; do
             old_id=$(gh api "repos/$GH_REPO/releases/$release_id/assets" --jq ".[] | select(.name == \"$name\") | .id")
             if [ -n "$old_id" ]; then gh api --method DELETE "repos/$GH_REPO/releases/assets/$old_id"; fi
             curl --fail --silent --show-error --request POST \

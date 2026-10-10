@@ -6,6 +6,7 @@ const ownerRoute = /\/admin\/?$/.test(location.pathname);
 import "./src/tailwind.css";
 import "./styles.css";
 import "./src/workbench.css";
+import "./src/home-experience.css";
 
 createRoot(document.getElementById("root")).render(
   <React.StrictMode>

@@ -246,7 +246,7 @@ test("multipage navigation and mobile daily workspace", async ({ page }) => {
     .click();
   await expect(page).toHaveURL(/daily\/$/);
   await page.goBack();
-  await expect(page.locator(".home-hero")).toBeVisible();
+  await expect(page.locator(".experience")).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
   await go(page, "meal-planner");
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(

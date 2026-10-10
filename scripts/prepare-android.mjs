@@ -2,8 +2,8 @@ import { readFile, writeFile, copyFile, mkdir } from "node:fs/promises";
 const path = "android/app/build.gradle";
 let gradle = await readFile(path, "utf8");
 gradle = gradle
-  .replace(/versionCode \d+/, "versionCode 40002")
-  .replace(/versionName "[^"]+"/, 'versionName "4.2.0"');
+  .replace(/versionCode \d+/, "versionCode 40003")
+  .replace(/versionName "[^"]+"/, 'versionName "4.3.0"');
 if (!gradle.includes("TOOLINGER_KEYSTORE")) {
   gradle = gradle
     .replace(

@@ -28,6 +28,7 @@ import {
   type ToolConfig,
 } from "./src/catalog";
 import { LifestyleTool, DailyHub, MySpace } from "./src/lifestyle";
+import { HomeExperience } from "./src/home-experience";
 import { QuickLaunch, EverydayCosts } from "./src/app-upgrades";
 import { useRoute, navigate, routeHref, assetUrl } from "./src/router";
 import { GUIDES } from "./src/guides";
@@ -4400,7 +4401,6 @@ function sampleFor(tool: ToolConfig) {
 function App() {
   const route = useRoute();
   const lastFocusedRoute = useRef(route);
-  const tiltFrame = useRef(0);
   useEffect(() => {
     const fail = (event: Event) =>
       setNotice((event as CustomEvent<string>).detail);
@@ -4964,157 +4964,46 @@ function App() {
           </div>
         ) : route === "" ? (
           <>
-            <section className="home-hero page-width">
-              <div className="hero-copy-new">
-                <span className="hero-pill">
-                  <span /> THE EVERYDAY TOOLKIT / VOL. 01
-                </span>
-                <h1>
-                  Small tasks.
-                  <br />
-                  <span>Big possibilities.</span>
-                </h1>
-                <p>
-                  Make, fix, convert. Plan a little better. A collection of
-                  useful tools for whatever your day throws at you.
-                </p>
-                <div className="hero-buttons">
-                  <a className="site-primary" href={routeHref("tools/")}>
-                    Find your next tool <Icon name="arrow" size={18} />
-                  </a>
-                  <a className="hero-secondary" href={routeHref("daily/")}>
-                    Your daily space ↗
-                  </a>
-                </div>
-                <div className="hero-small-stats">
-                  <strong>{TOOL_LIST.length} tools</strong>
-                  <span>{Object.keys(CATEGORY_LABELS).length} categories</span>
-                  <span>Free. No account.</span>
-                </div>
-              </div>
-              <div
-                className="workbench-art"
-                onPointerMove={(e) => {
-                  if (
-                    e.pointerType !== "mouse" ||
-                    matchMedia("(prefers-reduced-motion: reduce)").matches
-                  )
-                    return;
-                  cancelAnimationFrame(tiltFrame.current);
-                  const target = e.currentTarget,
-                    x = e.clientX,
-                    y = e.clientY;
-                  tiltFrame.current = requestAnimationFrame(() => {
-                    const r = target.getBoundingClientRect();
-                    target.style.setProperty(
-                      "--tilt-x",
-                      `${((x - r.left - r.width / 2) / r.width) * 8}deg`,
-                    );
-                    target.style.setProperty(
-                      "--tilt-y",
-                      `${(-(y - r.top - r.height / 2) / r.height) * 8}deg`,
-                    );
-                  });
-                }}
-                onPointerLeave={(e) => {
-                  cancelAnimationFrame(tiltFrame.current);
-                  e.currentTarget.style.setProperty("--tilt-x", "0deg");
-                  e.currentTarget.style.setProperty("--tilt-y", "0deg");
-                }}
-              >
-                <div className="art-corner">TOOLS FOR THE WAY YOU LIVE</div>
-                <div className="art-background" aria-hidden="true">
-                  <div className="art-orbit" />
-                  <div className="art-grid" />
-                </div>
-                <div className="art-stage">
-                  <a
-                    className="art-tool art-photo"
-                    href={routeHref("tools/passport-photo-maker/")}
-                    aria-label="Open passport photo studio"
-                  >
-                    <span>PHOTO LAB</span>
-                    <svg viewBox="0 0 180 180" aria-hidden="true">
-                      <rect x="34" y="19" width="112" height="140" rx="2" />
-                      <circle cx="90" cy="68" r="24" />
-                      <path d="M55 139v-18c0-30 70-30 70 0v18M17 40V10h30M133 10h30v30M163 138v30h-30M47 168H17v-30" />
-                    </svg>
-                    <div>
-                      Picture perfect.
-                      <Icon name="arrow" size={22} />
-                    </div>
-                  </a>
-                  <a
-                    className="art-tool art-planner"
-                    href={routeHref("tools/daily-planner/")}
-                    aria-label="Open daily planner"
-                  >
-                    <span>MAKE A LITTLE PLAN</span>
-                    <div className="art-todo">
-                      <i>✓</i>
-                      <b>One thing at a time.</b>
-                      <i>✓</i>
-                      <b>A little less chaos.</b>
-                      <i />
-                      <b>More room for you.</b>
-                    </div>
-                    <div>
-                      Today, sorted.
-                      <Icon name="arrow" size={20} />
-                    </div>
-                  </a>
-                  <a
-                    className="art-tool art-files"
-                    href={routeHref("tools/merge-pdf/")}
-                    aria-label="Open PDF tools"
-                  >
-                    <span>FILE SOMETHING GOOD</span>
-                    <Icon name="document" size={58} />
-                    <div>
-                      PDF, meet possibility.
-                      <Icon name="arrow" size={20} />
-                    </div>
-                  </a>
-                  <div className="art-stamp" aria-hidden="true">
-                    <span>134</span>
-                    <small>
-                      USEFUL
-                      <br />
-                      TOOLS
-                    </small>
-                  </div>
-                  <a
-                    className="art-launch"
-                    href={routeHref("tools/")}
-                    aria-label="Explore all tools"
-                  >
-                    <Icon name="arrow" size={32} />
-                  </a>
-                </div>
-                <div className="art-caption">
-                  <span>NO INSTALL. NO ACCOUNT.</span>
-                  <span>JUST GET IT DONE. ↗</span>
-                </div>
-              </div>
-            </section>
-            <div
-              className="tool-ticker"
-              aria-label="Create, convert, organise and get on with your day"
-            >
+            <HomeExperience />
+            <section className="motion-preview page-width">
               <div>
-                {[0, 1].map((n) => (
-                  <span key={n} aria-hidden={n === 1}>
-                    CREATE <i>✳</i> CONVERT <i>✳</i> ORGANISE <i>✳</i> GET ON
-                    WITH YOUR DAY <i>✳</i>
-                  </span>
-                ))}
+                <span className="eyeline">YOUR TOOLKIT, IN MOTION</span>
+                <h2>
+                  Start with a photo.
+                  <br />
+                  Finish with a plan.
+                </h2>
+                <p>
+                  Jump into a studio, tidy up a document, or make room for your
+                  next idea. Everything has its own workspace.
+                </p>
+                <a href={routeHref("categories/")}>Explore categories →</a>
               </div>
+              <video
+                poster={assetUrl("media/toolkit-motion-poster.jpg")}
+                controls
+                muted
+                loop
+                playsInline
+                preload="none"
+                aria-label="Animated preview of Toolinger’s photo, file and daily-life workspaces"
+              >
+                <source
+                  src={assetUrl("media/toolkit-motion.webm")}
+                  type="video/webm"
+                />
+                Your browser does not support this video. Use the tools above to
+                explore the toolkit.
+              </video>
+            </section>
+            <div className="page-width">
+              <AdPlacement placement="directory" />
             </div>
             <section className="home-section page-width">
               <div className="section-heading">
                 <div>
                   <span className="eyeline">GOOD TO HAVE AROUND</span>
-                  <h2>Meet your new shortcuts.</h2>
+                  <h2>Your most useful shortcuts.</h2>
                 </div>
                 <a className="text-link" href={routeHref("tools/")}>
                   See every tool →
@@ -5137,7 +5026,7 @@ function App() {
               <div className="section-heading">
                 <div>
                   <span className="eyeline">WHAT ARE WE DOING TODAY?</span>
-                  <h2>Pick a lane. Make it happen.</h2>
+                  <h2>Everything in its place.</h2>
                 </div>
               </div>
               {categories}
@@ -5146,7 +5035,7 @@ function App() {
               <div className="section-heading">
                 <div>
                   <span className="eyeline">A LITTLE KNOW-HOW</span>
-                  <h2>Good tools. Better ideas.</h2>
+                  <h2>A little guidance goes a long way.</h2>
                 </div>
                 <a className="text-link" href={routeHref("guides/")}>
                   All guides →
