@@ -2,8 +2,8 @@ import { readFile, writeFile, copyFile, mkdir } from "node:fs/promises";
 const path = "android/app/build.gradle";
 let gradle = await readFile(path, "utf8");
 gradle = gradle
-  .replace(/versionCode \d+/, "versionCode 40004")
-  .replace(/versionName "[^"]+"/, 'versionName "4.4.0"');
+  .replace(/versionCode \d+/, "versionCode 40005")
+  .replace(/versionName "[^"]+"/, 'versionName "4.5.0"');
 if (!gradle.includes("TOOLINGER_KEYSTORE")) {
   gradle = gradle
     .replace(
@@ -49,14 +49,20 @@ for (const [dpi, size] of [
       `${folder}/${name}.png`,
     );
 }
-const vector = `<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108"><group android:translateX="22" android:translateY="22"><path android:fillColor="#f9f6ee" android:pathData="M13,17h38v10H38v25H26V27H13z"/><path android:fillColor="#d4f14b" android:pathData="M49,40l2,5 5,2 -5,2 -2,5 -2,-5 -5,-2 5,-2z"/></group></vector>`;
+// Use the canonical store artwork in adaptive icons too, avoiding a separately
+// hand-drawn mark that can drift from the listing icon.
+await mkdir("android/app/src/main/res/drawable-nodpi", { recursive: true });
+await copyFile(
+  "public/app-icons/toolinger-512.png",
+  "android/app/src/main/res/drawable-nodpi/toolinger_launcher_art.png",
+);
 await writeFile(
   "android/app/src/main/res/drawable/ic_launcher_foreground.xml",
-  vector,
+  '<inset xmlns:android="http://schemas.android.com/apk/res/android" android:inset="16.6667%"><bitmap android:src="@drawable/toolinger_launcher_art" android:gravity="fill"/></inset>',
 );
 await writeFile(
   "android/app/src/main/res/drawable/ic_launcher_background.xml",
-  '<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle"><solid android:color="#244bff"/></shape>',
+  '<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle"><solid android:color="#10105c"/></shape>',
 );
 console.log(
   "Android release version, brand icons and secure signing configuration prepared.",
