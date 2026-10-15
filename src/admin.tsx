@@ -646,7 +646,7 @@ export default function Admin() {
                 </p>
                 <p>
                   <a
-                    href="https://github.com/Subha760/toolbox-pro/releases/download/v4.5.0/Toolinger-Owner-4.5.0.apk"
+                    href="https://github.com/Subha760/toolbox-pro/releases/download/v4.6.0/Toolinger-Owner-4.6.0.apk"
                     target="_blank"
                     rel="noreferrer"
                   >
